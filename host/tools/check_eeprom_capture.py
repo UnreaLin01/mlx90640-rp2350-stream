@@ -102,7 +102,8 @@ def main(csv_path, rtt_path):
     med = statistics.median(periods)
     in_byte = [p for p in periods if p < 1.5 * med]
     gaps = [p for p in periods if p >= 1.5 * med]
-    low_in = [x for x in lows if x < 1.5 * statistics.median(lows)]
+    low_limit = 1.5 * statistics.median(lows)
+    low_in = [x for x in lows if x < low_limit]
 
     print(f"SCL in-byte rate: {1 / statistics.mean(in_byte) / 1e3:.1f} kHz "
           f"(period {us(statistics.mean(in_byte)):.3f} us)")

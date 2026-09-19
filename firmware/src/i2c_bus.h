@@ -33,9 +33,18 @@ uint i2c_bus_init(uint freq_hz);
 /* Change the clock rate. Returns the rate actually set. */
 uint i2c_bus_set_freq(uint freq_hz);
 
+/*
+ * Set the SCL low and high counts directly, in clk_sys cycles.
+ * The SDK's rate setting does not account for the extra cycles the I2C
+ * block adds, or for slow rising edges; this allows fine tuning after
+ * measuring the real waveform. Call after i2c_bus_init / set_freq.
+ */
+void i2c_bus_set_scl_counts(uint lcnt, uint hcnt);
+
 void i2c_bus_get_timing(struct i2c_bus_timing *t);
 
-/* Read `count` 16-bit words starting at register `reg`. */
+/* Read `count` 16-bit words starting at register `reg`.
+ * Long reads use DMA, so there are no gaps between bytes on the bus. */
 int i2c_bus_read_words(uint8_t addr, uint16_t reg, uint16_t *dst, uint16_t count);
 
 /* Write one 16-bit word to register `reg`. */

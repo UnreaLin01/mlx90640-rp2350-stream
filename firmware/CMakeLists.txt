@@ -42,15 +42,17 @@ add_library(project_common INTERFACE)
 target_include_directories(project_common INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src)
 target_link_libraries(project_common INTERFACE pico_stdlib segger_rtt)
 
-# Sensor access: I2C bus driver + the I2C functions the Melexis library needs
+# Sensor access: I2C bus driver, the I2C functions the Melexis library
+# needs, and sensor control (setup, wait for data, read a subpage)
 add_library(sensor STATIC
 	src/i2c_bus.c
 	src/mlx90640_i2c.c
+	src/sensor.c
 	$<TARGET_OBJECTS:mlx90640_api>
 )
 target_compile_options(sensor PRIVATE -Wall -Wextra)
 target_include_directories(sensor PUBLIC ${MLX_DIR}/headers)
-target_link_libraries(sensor PUBLIC project_common hardware_i2c m)
+target_link_libraries(sensor PUBLIC project_common hardware_i2c hardware_dma m)
 
 # Add one firmware image. Every image uses the same rules:
 # logs go to RTT only, and USB/UART stdio stays off.
@@ -66,7 +68,15 @@ endfunction()
 # ---------------------------------------------------------------------------
 # Firmware images
 # ---------------------------------------------------------------------------
-add_firmware(mlx_thermal src/main.c)		# main firmware
+add_firmware(mlx_thermal src/main.c)		# main firmware (32 Hz)
+target_link_libraries(mlx_thermal PRIVATE sensor)
+
+# Same firmware at other subpage rates, for timing comparison (M3)
+foreach(rate 16 64)
+	add_firmware(mlx_thermal_${rate}hz src/main.c)
+	target_compile_definitions(mlx_thermal_${rate}hz PRIVATE SENSOR_RATE=SENSOR_RATE_${rate}HZ)
+	target_link_libraries(mlx_thermal_${rate}hz PRIVATE sensor)
+endforeach()
 add_firmware(pin_test tests/pin_test.c)		# Logic 8 wiring check
 
 # EEPROM read test at two clock rates (M2)
