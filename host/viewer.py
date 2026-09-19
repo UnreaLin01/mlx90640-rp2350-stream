@@ -93,9 +93,10 @@ class Card(QtWidgets.QFrame):
 
 
 class Viewer(QtWidgets.QMainWindow):
-    def __init__(self, port, replay):
+    def __init__(self, port, replay, calc="melexis"):
         super().__init__()
-        self.setWindowTitle("MLX90640 Thermal Viewer" + ("  [replay]" if replay else ""))
+        self.setWindowTitle("MLX90640 Thermal Viewer" + ("  [replay]" if replay else "")
+                            + ("  [calc: python]" if calc == "python" else ""))
         self.resize(1280, 800)
 
         self._last = None                   # last Frame
@@ -109,7 +110,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         # --- Worker thread ---------------------------------------------------
         self._thread = QtCore.QThread(self)
-        self._worker = StreamWorker(port=port, replay=replay)
+        self._worker = StreamWorker(port=port, replay=replay, calc=calc)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.frame_ready.connect(self._on_frame)
@@ -368,6 +369,8 @@ def main():
     ap.add_argument("--after", type=float, default=5.0)
     ap.add_argument("--avg", action="store_true", help="start with time averaging on")
     ap.add_argument("--smooth", action="store_true", help="start with smooth display on")
+    ap.add_argument("--calc", choices=["melexis", "python"], default="melexis",
+                    help="temperature calculation: Melexis C code (A) or numpy port (B)")
     args = ap.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)
@@ -382,7 +385,7 @@ def main():
     pal.setColor(QtGui.QPalette.Highlight, QtGui.QColor(ACCENT))
     app.setPalette(pal)
 
-    w = Viewer(args.port, args.replay)
+    w = Viewer(args.port, args.replay, args.calc)
     w.avg_chk.setChecked(args.avg)
     w.smooth_chk.setChecked(args.smooth)
     w.show()

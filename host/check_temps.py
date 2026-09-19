@@ -18,8 +18,8 @@ import time
 
 import numpy as np
 
-from mlxstream.calc_melexis import MelexisCalc
 from mlxstream.protocol import TYPE_EEPROM, TYPE_SUBPAGE
+from mlxstream.worker import CALC_CLASSES
 from mlxstream.receiver import Receiver
 from mlxstream.sources import FileSource, SerialSource
 
@@ -32,6 +32,8 @@ def main():
     ap.add_argument("--file", help="saved stream (stream_stats.py --save)")
     ap.add_argument("--port", help="COM port (default: find by VID/PID)")
     ap.add_argument("--duration", type=float, default=20.0, help="seconds, live mode only")
+    ap.add_argument("--calc", choices=list(CALC_CLASSES), default="melexis",
+                    help="Melexis C code (A) or numpy port (B)")
     args = ap.parse_args()
 
     src = FileSource(args.file) if args.file else SerialSource(args.port)
@@ -49,7 +51,7 @@ def main():
                 break
             for b in blocks:
                 if b.type == TYPE_EEPROM and calc is None:
-                    calc = MelexisCalc(b.words())
+                    calc = CALC_CLASSES[args.calc](b.words())
                     print(f"EEPROM received, ExtractParameters -> {calc.extract_error}")
                 elif b.type == TYPE_SUBPAGE and calc is not None:
                     t = time.perf_counter()

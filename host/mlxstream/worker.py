@@ -11,7 +11,12 @@ import numpy as np
 from PySide6 import QtCore
 
 from .calc_melexis import MelexisCalc
+from .calc_python import PythonCalc
 from .protocol import TYPE_EEPROM, TYPE_STATUS, TYPE_SUBPAGE
+
+# Temperature calculation: "melexis" = official C code (method A),
+# "python" = numpy port (method B). Both give the same result.
+CALC_CLASSES = {"melexis": MelexisCalc, "python": PythonCalc}
 from .receiver import Receiver
 from .sources import FileSource, SerialSource
 
@@ -31,10 +36,11 @@ class StreamWorker(QtCore.QObject):
     frame_ready = QtCore.Signal(object)
     message = QtCore.Signal(str)
 
-    def __init__(self, port=None, replay=None, emissivity=0.95):
+    def __init__(self, port=None, replay=None, emissivity=0.95, calc="melexis"):
         super().__init__()
         self._port = port
         self._replay = replay
+        self._calc_class = CALC_CLASSES[calc]
         self._running = True
         self.emissivity = emissivity
 
@@ -76,7 +82,7 @@ class StreamWorker(QtCore.QObject):
                     words = b.words()
                     if calc is None or words != ee_words:
                         ee_words = words
-                        calc = MelexisCalc(words, self.emissivity)
+                        calc = self._calc_class(words, self.emissivity)
                         self.message.emit(f"已收到 EEPROM（ExtractParameters = {calc.extract_error}）")
                 elif b.type == TYPE_STATUS:
                     device_status = b.status()
