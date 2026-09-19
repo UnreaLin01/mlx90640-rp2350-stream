@@ -22,6 +22,7 @@
 #define DMA_MAX_WORDS		832
 
 static uint current_baud;
+static void (*idle_hook)(void);
 
 /* DMA channels, claimed once at init (never fixed numbers, so other code
  * such as the Ethernet driver can claim its own channels freely). */
@@ -260,6 +261,7 @@ static int read_dma(uint8_t addr, uint16_t reg, uint16_t *dst, uint16_t count) {
 	/* Wait for the last byte. A NACK makes the block abort the transfer. */
 	until = make_timeout_time_us(nbytes * 20u + 1000u);
 	while (dma_channel_is_busy(dma_rx_ch)) {
+		i2c_bus_idle();
 		if (hw->raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_ABRT_BITS) {
 			dma_read_abort(hw);
 			return I2C_BUS_ERR_NACK;
@@ -301,6 +303,16 @@ int i2c_bus_write_word(uint8_t addr, uint16_t reg, uint16_t value) {
 
 	ret = i2c_write_timeout_per_char_us(BUS, addr, buf, sizeof(buf), false, BYTE_TIMEOUT_US);
 	return map_result(ret, sizeof(buf));
+}
+
+void i2c_bus_set_idle_hook(void (*hook)(void)) {
+	idle_hook = hook;
+}
+
+void i2c_bus_idle(void) {
+	if (idle_hook) {
+		idle_hook();
+	}
 }
 
 int i2c_bus_general_reset(void) {

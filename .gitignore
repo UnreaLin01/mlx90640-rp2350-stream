@@ -12,3 +12,4 @@ firmware/build/
 __pycache__/
 *.pyc
 .venv/
+host/.venv/

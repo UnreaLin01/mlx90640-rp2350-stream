@@ -68,14 +68,25 @@ endfunction()
 # ---------------------------------------------------------------------------
 # Firmware images
 # ---------------------------------------------------------------------------
+# Streaming: protocol packets + USB CDC transport (TinyUSB, own descriptors;
+# the SDK's stdio_usb stays off because USB carries only image data)
+add_library(stream_usb STATIC
+	src/protocol.c
+	src/stream.c
+	src/transport_usb.c
+	src/usb_descriptors.c
+)
+target_compile_options(stream_usb PRIVATE -Wall -Wextra)
+target_link_libraries(stream_usb PUBLIC project_common sensor tinyusb_device pico_unique_id)
+
 add_firmware(mlx_thermal src/main.c)		# main firmware (32 Hz)
-target_link_libraries(mlx_thermal PRIVATE sensor)
+target_link_libraries(mlx_thermal PRIVATE sensor stream_usb)
 
 # Same firmware at other subpage rates, for timing comparison (M3)
 foreach(rate 16 64)
 	add_firmware(mlx_thermal_${rate}hz src/main.c)
 	target_compile_definitions(mlx_thermal_${rate}hz PRIVATE SENSOR_RATE=SENSOR_RATE_${rate}HZ)
-	target_link_libraries(mlx_thermal_${rate}hz PRIVATE sensor)
+	target_link_libraries(mlx_thermal_${rate}hz PRIVATE sensor stream_usb)
 endforeach()
 add_firmware(pin_test tests/pin_test.c)		# Logic 8 wiring check
 

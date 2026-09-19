@@ -47,7 +47,7 @@
   - MCP 的 `add_analyzer` 無法使用（參數格式 bug），I2C 解碼一律用 `host/tools/i2c_decode.py` 解析 raw CSV（已與 Logic 2 內建 analyzer 交叉驗證一致，見 `docs/m2_i2c.md`）。
   - `save_capture` 的目標資料夾必須已存在，否則會靜默失敗；先匯出 raw CSV 再存 `.sal`。
   - 每次 `start_capture` 都會在 GUI 開新分頁，用完要 `close_capture`。
-- **電腦端**：Python 3，套件需求寫在 `host/requirements.txt`。
+- **電腦端**：Python 3.13，venv 在 `host/.venv`（不進 git），套件需求寫在 `host/requirements.txt`。執行一律用 `host/.venv/Scripts/python`。串流協定見 `docs/protocol.md`，解析器測試 `host/tests/test_protocol.py`。
 
 ## 串流協定（USB 與乙太網路共用）
 
@@ -88,7 +88,7 @@
 
 ## 目前進度
 
-- [x] M0　- [x] M1　- [x] M2　- [x] M3　- [ ] M4　- [ ] M5　- [ ] M6　- [ ] M7
+- [x] M0　- [x] M1　- [x] M2　- [x] M3　- [x] M4　- [ ] M5　- [ ] M6　- [ ] M7
 
 ## 已知問題（待解決）
 

@@ -70,7 +70,11 @@ int sensor_wait_data_ready(uint32_t poll_us, uint32_t timeout_us) {
 		if (time_us_32() - start > timeout_us) {
 			return SENSOR_ERR_TIMEOUT;
 		}
-		sleep_us(poll_us);
+		/* Wait before the next poll, running the idle hook meanwhile. */
+		uint32_t t0 = time_us_32();
+		while (time_us_32() - t0 < poll_us) {
+			i2c_bus_idle();
+		}
 	}
 }
 

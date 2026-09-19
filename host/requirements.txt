@@ -1,0 +1,5 @@
+# PC-side Python packages (Python 3.13, venv in host/.venv)
+#   py -3.13 -m venv host/.venv
+#   host/.venv/Scripts/python -m pip install -r host/requirements.txt
+pyserial==3.5
+numpy==2.5.3

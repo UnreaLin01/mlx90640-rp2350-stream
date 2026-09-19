@@ -53,4 +53,14 @@ int i2c_bus_write_word(uint8_t addr, uint16_t reg, uint16_t value);
 /* Send the I2C "general call reset" (address 0x00, data 0x06). */
 int i2c_bus_general_reset(void);
 
+/*
+ * Work to run while the CPU waits for a long I2C transfer (for example the
+ * USB stack's background task). The DMA moves the I2C data meanwhile, so
+ * this work does not slow down the bus. Pass NULL to remove it.
+ */
+void i2c_bus_set_idle_hook(void (*hook)(void));
+
+/* Run the idle hook once (also used by other wait loops). */
+void i2c_bus_idle(void);
+
 #endif
