@@ -1,0 +1,63 @@
+; Rise time test for the I2C lines (M2).
+;
+; SDA and SCL are driven like I2C (open-drain): output value is always 0,
+; and the pin direction decides the level.
+;   pindirs = 1 -> the pin pulls the line low
+;   pindirs = 0 -> the pin lets go, and the pull-up brings the line high
+;
+; The marker pin (side-set) changes in the SAME clock cycle as the lines.
+; It is a normal push-pull output, so its edges are fast. On the logic
+; analyzer, the delay from a marker edge to the line edge shows how long
+; the line takes to change. Falling edges are fast (driven by the pin), so
+; they tell us the fixed offset between channels. Rising edges are slow
+; (pull-up only), so rise delay minus fall delay = time to reach the
+; analyzer threshold.
+;
+; Each half period is about 550 PIO cycles (3.7 us), long enough for the line
+; to settle completely.
+
+.program rise_test
+.side_set 1
+
+.wrap_target
+    set pindirs, 3      side 0 [15]     ; pull SDA and SCL low, marker low
+    set x, 31           side 0 [15]
+low_hold:
+    jmp x-- low_hold    side 0 [15]
+    set pindirs, 0      side 1 [15]     ; release both lines, marker high
+    set x, 31           side 1 [15]
+high_hold:
+    jmp x-- high_hold   side 1 [15]
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+
+/*
+ * lines_base: first of the two I2C pins (SDA, then SCL must be the next pin).
+ * marker_pin: push-pull marker output.
+ * clkdiv: PIO clock divider. A small odd fraction keeps the edges from
+ * lining up with the analyzer's sample clock, so averaging many edges
+ * gives better than one-sample resolution.
+ */
+static inline void rise_test_program_init(PIO pio, uint sm, uint offset,
+                                          uint lines_base, uint marker_pin, float clkdiv) {
+    pio_sm_config c = rise_test_program_get_default_config(offset);
+
+    sm_config_set_set_pins(&c, lines_base, 2);
+    sm_config_set_sideset_pins(&c, marker_pin);
+    sm_config_set_clkdiv(&c, clkdiv);
+
+    pio_gpio_init(pio, lines_base);
+    pio_gpio_init(pio, lines_base + 1);
+    pio_gpio_init(pio, marker_pin);
+
+    /* Lines: output value 0, start released (input). Marker: output. */
+    pio_sm_set_pins_with_mask(pio, sm, 0, (3u << lines_base) | (1u << marker_pin));
+    pio_sm_set_pindirs_with_mask(pio, sm, 1u << marker_pin,
+                                 (3u << lines_base) | (1u << marker_pin));
+
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

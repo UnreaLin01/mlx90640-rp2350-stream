@@ -44,6 +44,9 @@
 - **Log**：SEGGER RTT（原始碼在 J-Link 安裝目錄的 `Samples/RTT`），用 `JLinkRTTLogger` 存到 `logs/` 讓自己讀。不使用 UART printf，避免干擾 I2C 時序。燒錄前先停掉 RTT logger。
 - **USB 只傳影像資料，不傳 log**：log 一律走 RTT，USB CDC 通道專門傳影像封包，兩者不可混用。不要啟用 `stdio_usb` 把 printf 導到 USB。
 - **邏輯分析儀**：Logic 2 MCP server（`http://127.0.0.1:10530`）。Logic 8 的門檻電壓是固定的，**不要傳 `digitalThresholdVolts`**。I2C 量測取樣率至少 25 MS/s。擷取檔與匯出的 CSV 放在 `captures/`。
+  - MCP 的 `add_analyzer` 無法使用（參數格式 bug），I2C 解碼一律用 `host/tools/i2c_decode.py` 解析 raw CSV（已與 Logic 2 內建 analyzer 交叉驗證一致，見 `docs/m2_i2c.md`）。
+  - `save_capture` 的目標資料夾必須已存在，否則會靜默失敗；先匯出 raw CSV 再存 `.sal`。
+  - 每次 `start_capture` 都會在 GUI 開新分頁，用完要 `close_capture`。
 - **電腦端**：Python 3，套件需求寫在 `host/requirements.txt`。
 
 ## 串流協定（USB 與乙太網路共用）
@@ -74,7 +77,8 @@
 
 - **M0 環境檢查（不寫韌體）**：確認 cmake、ninja、arm-none-eabi-gcc、Pico SDK、J-Link、Python、git 都找得到並列出版本；J-Link 能連上並辨識 RP2350；Logic 2 MCP 能列出實體 Logic 8。缺什麼就列出來請使用者安裝，不要自己改系統設定。
 - **M1 燒錄與 log**：LED 閃爍＋RTT 每秒印出計數。驗收：`logs/` 內的 RTT 輸出計數持續遞增；並以 `pin_test` 韌體讓 GP4～7 輸出 4-bit 計數，Logic 8 擷取 CH0～CH3 後用 `host/tools/check_pin_test.py` 檢查，四個通道頻率正確且計數無錯（確認接線與通道對應）。
-- **M2 I2C 通訊**：以 400 kHz 讀取 MLX90640 EEPROM，再提升到 1 MHz。驗收：裝置 ACK、EEPROM 內容與 Logic 8 的 I2C 解碼一致、1 MHz 下波形上升時間合格。
+- **M2 I2C 通訊**：以 400 kHz 讀取 MLX90640 EEPROM，再提升到 1 MHz。驗收：裝置 ACK、EEPROM 內容與 Logic 8 的 I2C 解碼一致、1 MHz 下 SDA→SCL setup 餘裕（以量得的上升時間換算）大於規格 50 ns、1 MHz 連續讀取 EEPROM 10 分鐘 0 錯誤。
+  - 使用者決定（2026-09-20）：目前硬體無法加強上拉，1 MHz 上升時間約 220 ns，**不符合** Fast-mode Plus 的 120 ns，暫時接受，列為已知問題（見 `docs/m2_i2c.md`）。M3 起調整 SCL 時序時，SCL low 維持 ≥ 600 ns，只縮短 high，以免吃掉 setup 餘裕。
 - **M3 讀取時序**：設定更新率（基準 32 Hz subpage rate，挑戰 64 Hz），連續讀取 subpage。驗收：以計時標記量出單一 subpage 讀取時間，並低於 subpage 週期的一半。
 - **M4 USB 串流**：原始 subpage 資料經 USB CDC 串流，電腦端接收腳本統計幀率、CRC 錯誤、序號連續性。驗收：連續 60 秒無 CRC 錯誤、無序號跳號，幀率符合 M3 設定；並以計時標記確認 USB 傳輸沒有拖慢 I2C 讀取。
 - **M5 顯示（USB）**：電腦端換算溫度並即時顯示熱影像。自動驗收：溫度落在合理範圍（室溫約 15～40°C）。最終驗收由使用者目視確認（手靠近時影像與溫度要有對應變化）。**M5 通過代表整條資料路徑已穩定，之後只換傳輸層。**
@@ -83,7 +87,11 @@
 
 ## 目前進度
 
-- [x] M0　- [x] M1　- [ ] M2　- [ ] M3　- [ ] M4　- [ ] M5　- [ ] M6　- [ ] M7
+- [x] M0　- [x] M1　- [x] M2　- [ ] M3　- [ ] M4　- [ ] M5　- [ ] M6　- [ ] M7
+
+## 已知問題（待解決）
+
+- **I2C 1 MHz 上升時間約 220 ns，不符合 Fast-mode Plus 的 120 ns**（模組上拉太弱）。目前實測時序餘裕足夠、長時間測試 0 錯誤，使用者決定暫時接受，之後再改硬體。詳見 `docs/m2_i2c.md`。改硬體後要重跑 `rise_test` 與 `eeprom_soak_1000k`。
 
 ## 必須停下來找使用者的情況
 
