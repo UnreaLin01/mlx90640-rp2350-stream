@@ -1,0 +1,14 @@
+# Logic 8 captures and exports
+captures/
+
+# RTT logs
+logs/
+
+# Build output
+build/
+firmware/build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
