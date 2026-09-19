@@ -24,8 +24,8 @@
 
 | 訊號 | RP2350 腳位 | 接到 | Logic 8 通道 |
 |---|---|---|---|
-| I2C0 SDA | GP4 | MLX90640 SDA | CH1 |
-| I2C0 SCL | GP5 | MLX90640 SCL | CH0 |
+| I2C0 SDA | GP4 | MLX90640 SDA | CH0 |
+| I2C0 SCL | GP5 | MLX90640 SCL | CH1 |
 | 計時標記 A | GP6 | —（僅供量測） | CH2 |
 | 計時標記 B | GP7 | —（僅供量測） | CH3 |
 | 板載 LED | GP25 | — | — |
@@ -73,7 +73,7 @@
 每完成一個里程碑：更新本檔的「目前進度」、git commit，然後停下來向使用者回報結果與量測數據。
 
 - **M0 環境檢查（不寫韌體）**：確認 cmake、ninja、arm-none-eabi-gcc、Pico SDK、J-Link、Python、git 都找得到並列出版本；J-Link 能連上並辨識 RP2350；Logic 2 MCP 能列出實體 Logic 8。缺什麼就列出來請使用者安裝，不要自己改系統設定。
-- **M1 燒錄與 log**：LED 閃爍＋RTT 每秒印出計數。驗收：`logs/` 內的 RTT 輸出計數持續遞增。
+- **M1 燒錄與 log**：LED 閃爍＋RTT 每秒印出計數。驗收：`logs/` 內的 RTT 輸出計數持續遞增；並以 `pin_test` 韌體讓 GP4～7 輸出 4-bit 計數，Logic 8 擷取 CH0～CH3 後用 `host/tools/check_pin_test.py` 檢查，四個通道頻率正確且計數無錯（確認接線與通道對應）。
 - **M2 I2C 通訊**：以 400 kHz 讀取 MLX90640 EEPROM，再提升到 1 MHz。驗收：裝置 ACK、EEPROM 內容與 Logic 8 的 I2C 解碼一致、1 MHz 下波形上升時間合格。
 - **M3 讀取時序**：設定更新率（基準 32 Hz subpage rate，挑戰 64 Hz），連續讀取 subpage。驗收：以計時標記量出單一 subpage 讀取時間，並低於 subpage 週期的一半。
 - **M4 USB 串流**：原始 subpage 資料經 USB CDC 串流，電腦端接收腳本統計幀率、CRC 錯誤、序號連續性。驗收：連續 60 秒無 CRC 錯誤、無序號跳號，幀率符合 M3 設定；並以計時標記確認 USB 傳輸沒有拖慢 I2C 讀取。
@@ -83,7 +83,7 @@
 
 ## 目前進度
 
-- [x] M0　- [ ] M1　- [ ] M2　- [ ] M3　- [ ] M4　- [ ] M5　- [ ] M6　- [ ] M7
+- [x] M0　- [x] M1　- [ ] M2　- [ ] M3　- [ ] M4　- [ ] M5　- [ ] M6　- [ ] M7
 
 ## 必須停下來找使用者的情況
 
@@ -100,6 +100,9 @@
 - 單行的 if／迴圈也一律加大括號。
 - 函式呼叫換行時，續行對齊左括號：縮排用 tab、對齊填充用空格。
 - 第三方程式碼（Pico SDK、WIZnet ioLibrary、Melexis library、SEGGER RTT）維持原樣，不套用上述風格。
+- 韌體要有結構、好維護：依功能分模組（例如腳位集中在 `board.h`、log 集中在 `log.h`，I2C、感測器、封包、傳輸層各自一個模組），不要把所有東西塞進 `main.c`；測試用韌體放 `firmware/tests/`，建成獨立的執行檔。
+- 註解：每個檔案與大功能區塊都要有註解說明用途；非常複雜或不直覺的程式碼（例如時序、暫存器操作、為什麼這樣做）也要加註解。
+- 註解一律用英文，用簡單、好懂的字詞，避免艱澀術語與冗長句子。
 - git commit 訊息只寫一句話，簡短描述改了什麼。
 
 ## 目錄結構（建議）
