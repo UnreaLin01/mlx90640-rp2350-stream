@@ -23,6 +23,26 @@ def find_serial_port():
     return chosen[0].device if chosen else None
 
 
+class FileSource:
+    """A byte stream saved earlier (stream_stats.py --save). read() returns
+    b"" at the end. Used to work on the PC side without the board."""
+
+    def __init__(self, path, chunk=16384):
+        self.name = path
+        self._f = open(path, "rb")
+        self._chunk = chunk
+        self.eof = False
+
+    def read(self):
+        data = self._f.read(self._chunk)
+        if not data:
+            self.eof = True
+        return data
+
+    def close(self):
+        self._f.close()
+
+
 class SerialSource:
     """USB CDC virtual COM port. The baud rate setting does not matter for
     USB CDC; opening the port (DTR on) tells the board to start sending."""

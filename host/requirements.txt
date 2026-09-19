@@ -3,3 +3,5 @@
 #   host/.venv/Scripts/python -m pip install -r host/requirements.txt
 pyserial==3.5
 numpy==2.5.3
+pyqtgraph==0.14.0
+PySide6==6.11.2
