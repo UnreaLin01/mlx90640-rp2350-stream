@@ -1,0 +1,84 @@
+{
+    // The Raspberry Pi Pico extension's buttons (Compile / Run) start the
+    // tasks named "Compile Project" and "Run Project".
+    //
+    // They call this project's own scripts, so the buttons and the command
+    // line do exactly the same thing: pinned tool versions (scripts/env.ps1)
+    // and flashing over SWD with J-Link, not BOOTSEL/picotool.
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Project",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/scripts/build.ps1"
+            ],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": "$gcc",
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+        },
+        {
+            "label": "Run Project",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/scripts/flash.ps1"
+            ],
+            "dependsOn": "Compile Project",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+        },
+        {
+            "label": "Flash (choose firmware)",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/scripts/flash.ps1",
+                "-Elf", "${workspaceFolder}/build/firmware/${input:firmware}.elf"
+            ],
+            "dependsOn": "Compile Project",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+        },
+        {
+            "label": "RTT log",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/scripts/rtt.ps1",
+                "-Elf", "${workspaceFolder}/build/firmware/${input:firmware}.elf"
+            ],
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated" }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "firmware",
+            "type": "pickString",
+            "description": "Which firmware image?",
+            "default": "mlx_thermal",
+            "options": [
+                "mlx_thermal",
+                "mlx_thermal_udp",
+                "mlx_thermal_16hz",
+                "mlx_thermal_64hz",
+                "net_test",
+                "pin_test",
+                "rise_test",
+                "eeprom_test_400k",
+                "eeprom_test_1000k",
+                "eeprom_soak_1000k"
+            ]
+        }
+    ]
+}
