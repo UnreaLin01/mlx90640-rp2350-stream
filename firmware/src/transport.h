@@ -30,4 +30,18 @@ bool transport_connected(void);
 /* Queue one whole packet. Returns false if it was dropped. */
 bool transport_send(const uint8_t *packet, size_t len);
 
+/*
+ * Packets the transport accepted but then failed to put on the wire.
+ * Packets refused by transport_send() are counted by stream.c instead, so
+ * the two never count the same packet twice.
+ */
+uint32_t transport_dropped(void);
+
+/*
+ * True when the transport hardware never came up, so nothing can ever be
+ * sent. The rest of the firmware keeps running; main.c uses this to show
+ * a different LED pattern, because without a debugger the log is invisible.
+ */
+bool transport_fault(void);
+
 #endif

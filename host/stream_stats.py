@@ -155,6 +155,8 @@ def main():
         ("SUBPAGE seq gaps = 0", asm.seq_gaps.get(TYPE_SUBPAGE, 0) == 0,
          asm.seq_gaps.get(TYPE_SUBPAGE, 0)),
         ("incomplete blocks = 0", sum(asm.incomplete.values()) == 0, dict(asm.incomplete)),
+        ("malformed blocks = 0 (wrong size for their type)",
+         sum(asm.bad_blocks.values()) == 0, dict(asm.bad_blocks)),
         (f"subpage 0/1 alternation errors after the first {CONNECT_WINDOW_S:.0f} s = 0",
          chk.alternation_errors == 0,
          f"{chk.alternation_errors} (at connect: {chk.alternation_errors_at_connect})"),

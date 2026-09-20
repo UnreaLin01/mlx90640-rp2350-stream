@@ -4,6 +4,8 @@
 
 #include "stream.h"
 
+#include <assert.h>
+
 #include "mlx90640.h"
 #include "transport.h"
 
@@ -11,7 +13,9 @@
 #define SUBPAGE_WORDS		(MLX90640_PIXEL_NUM + MLX90640_AUX_NUM + 1)
 
 static uint8_t packet[PROTO_PACKET_MAX];
-static uint32_t seq[4];			/* next block number, per type */
+/* Next block number, one counter per packet type. Indexed by the type
+ * value itself, so the array must cover every type in the enum. */
+static uint32_t seq[PROTO_TYPE_COUNT];
 static uint32_t dropped;
 
 void stream_init(void) {
@@ -24,7 +28,11 @@ static void send_block(enum proto_type type, uint8_t subpage, uint64_t t_us,
                        const void *data, size_t len) {
 	const uint8_t *bytes = data;
 	uint8_t parts = (uint8_t)((len + PROTO_PART_MAX - 1) / PROTO_PART_MAX);
-	uint32_t block_seq = seq[type]++;
+	uint32_t block_seq;
+
+	/* A type outside the enum would index seq[] out of bounds. */
+	assert((unsigned)type < PROTO_TYPE_COUNT);
+	block_seq = seq[type]++;
 
 	if (!transport_connected()) {
 		return;

@@ -2,6 +2,11 @@
 
 Runs in its own thread so the GUI never waits on the COM port. Each full
 update is sent to the GUI as a Frame through a Qt signal.
+
+The blocks-to-image part is in pipeline.ImageStream, shared with
+check_temps.py. What is left here is what only the GUI needs: the Qt
+signals, the measured rate, the error counters and replaying a recording
+at its original speed.
 """
 
 import time
@@ -10,19 +15,13 @@ from dataclasses import dataclass, field
 import numpy as np
 from PySide6 import QtCore
 
-from .calc_melexis import MelexisCalc
-from .calc_python import PythonCalc
-from .protocol import TYPE_EEPROM, TYPE_STATUS, TYPE_SUBPAGE
-
-# Temperature calculation. "python" is the default: it needs nothing but
-# numpy. "melexis" runs the official C code through a DLL that has to be
-# built first; it is kept as the reference to check the port against
-# (host/tools/compare_calc.py). Both give the same result to within
-# 0.04 mK, see docs/method_b_compare.md.
-CALC_CLASSES = {"python": PythonCalc, "melexis": MelexisCalc}
-DEFAULT_CALC = "python"
+from .pipeline import DEFAULT_CALC, DEFAULT_EMISSIVITY, ImageStream
+from .protocol import TYPE_SUBPAGE
 from .receiver import Receiver
 from .sources import FileSource, open_source
+
+# How many recent subpages the displayed rate is averaged over (about 1 s).
+RATE_WINDOW = 33
 
 
 @dataclass
@@ -40,11 +39,12 @@ class StreamWorker(QtCore.QObject):
     frame_ready = QtCore.Signal(object)
     message = QtCore.Signal(str)
 
-    def __init__(self, source="usb", replay=None, emissivity=0.95, calc=DEFAULT_CALC):
+    def __init__(self, source="usb", replay=None, emissivity=DEFAULT_EMISSIVITY,
+                 calc=DEFAULT_CALC):
         super().__init__()
         self._source = source
         self._replay = replay
-        self._calc_class = CALC_CLASSES[calc]
+        self._calc = calc
         self._running = True
         self.emissivity = emissivity
 
@@ -56,6 +56,20 @@ class StreamWorker(QtCore.QObject):
             return FileSource(self._replay)
         return open_source(self._source)
 
+    def _counters(self, rx, images):
+        """The numbers shown next to the image: what this PC missed, and
+        what the board itself reported in its last STATUS block."""
+        p, a = rx.parser, rx.assembler
+        st = images.status
+        return {
+            "crc": p.crc_errors,
+            "gaps": a.seq_gaps.get(TYPE_SUBPAGE, 0),
+            "incomplete": sum(a.incomplete.values()) + sum(a.bad_blocks.values()),
+            "dev_dropped": st.get("tx_dropped", 0),
+            "dev_errors": sum(st.get(k, 0) for k in
+                              ("read_errors", "order_errors", "wait_errors")),
+        }
+
     @QtCore.Slot()
     def run(self):
         try:
@@ -65,10 +79,7 @@ class StreamWorker(QtCore.QObject):
             return
         self.message.emit(f"資料來源：{rx.source.name}")
 
-        calc = None
-        ee_words = None
-        seen = set()
-        device_status = {}
+        images = ImageStream(self._calc, self.emissivity)
         rate_ts = []                     # recent device timestamps, for the rate
         replay_t0 = None                 # (wall clock, device time) at replay start
 
@@ -78,49 +89,35 @@ class StreamWorker(QtCore.QObject):
                 # Loop the recording.
                 rx.close()
                 rx = Receiver(self._open())
-                calc, seen, replay_t0, rate_ts = None, set(), None, []
+                images.reset()
+                replay_t0, rate_ts = None, []
                 continue
 
             for b in blocks:
-                if b.type == TYPE_EEPROM:
-                    words = b.words()
-                    if calc is None or words != ee_words:
-                        ee_words = words
-                        calc = self._calc_class(words, self.emissivity)
-                        self.message.emit(f"已收到 EEPROM（ExtractParameters = {calc.extract_error}）")
-                elif b.type == TYPE_STATUS:
-                    device_status = b.status()
-                elif b.type == TYPE_SUBPAGE and calc is not None:
-                    calc.emissivity = self.emissivity
-                    image = calc.update(b.frame_data())
-                    seen.add(b.subpage)
-                    if len(seen) < 2:
-                        continue         # wait until both halves are filled
+                images.emissivity = self.emissivity
+                image = images.push(b)
+                if images.new_eeprom:
+                    self.message.emit("已收到 EEPROM（ExtractParameters = "
+                                      f"{images.calc.extract_error}）")
+                if image is None:
+                    continue
 
-                    if self._replay:
-                        # Play back at the original speed.
-                        now = time.perf_counter()
-                        if replay_t0 is None:
-                            replay_t0 = (now, b.timestamp_us)
-                        due = replay_t0[0] + (b.timestamp_us - replay_t0[1]) / 1e6
-                        if due > now:
-                            time.sleep(due - now)
+                if self._replay:
+                    # Play back at the original speed.
+                    now = time.perf_counter()
+                    if replay_t0 is None:
+                        replay_t0 = (now, b.timestamp_us)
+                    due = replay_t0[0] + (b.timestamp_us - replay_t0[1]) / 1e6
+                    if due > now:
+                        time.sleep(due - now)
 
-                    rate_ts.append(b.timestamp_us)
-                    rate_ts = rate_ts[-33:]
-                    rate = ((len(rate_ts) - 1) / ((rate_ts[-1] - rate_ts[0]) / 1e6)
-                            if len(rate_ts) > 1 else 0.0)
-                    p, a = rx.parser, rx.assembler
-                    counters = {
-                        "crc": p.crc_errors,
-                        "gaps": a.seq_gaps.get(TYPE_SUBPAGE, 0),
-                        "incomplete": sum(a.incomplete.values()),
-                        "dev_dropped": device_status.get("tx_dropped", 0),
-                        "dev_errors": sum(device_status.get(k, 0) for k in
-                                          ("read_errors", "order_errors", "wait_errors")),
-                    }
-                    self.frame_ready.emit(Frame(image, calc.ta, b.subpage, b.seq,
-                                                b.timestamp_us, rate, counters))
+                rate_ts.append(b.timestamp_us)
+                rate_ts = rate_ts[-RATE_WINDOW:]
+                rate = ((len(rate_ts) - 1) / ((rate_ts[-1] - rate_ts[0]) / 1e6)
+                        if len(rate_ts) > 1 else 0.0)
+                self.frame_ready.emit(Frame(image, images.ta, b.subpage, b.seq,
+                                            b.timestamp_us, rate,
+                                            self._counters(rx, images)))
             if not blocks and self._replay is None:
                 time.sleep(0.002)
         rx.close()

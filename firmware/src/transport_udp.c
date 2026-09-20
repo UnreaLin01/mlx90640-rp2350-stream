@@ -85,6 +85,11 @@ static uint8_t rx_buf[PROTO_PACKET_MAX];
  */
 static volatile bool peer_known;
 static volatile uint32_t last_request_us;
+/* Packets taken out of the queue but refused by the chip. */
+static volatile uint32_t send_failed;
+/* Set once when the chip or the socket did not come up. From then on
+ * nothing can ever be sent, and core 1 has stopped. */
+static volatile bool net_fault;
 
 /* Core 1 only. */
 static uint8_t peer_ip[4];
@@ -127,18 +132,30 @@ static void handle_request(void) {
 	}
 }
 
+/*
+ * Stop core 1 for good and tell core 0 why.
+ *
+ * Returning from the entry function of core 1 is not defined, so every
+ * failure ends here instead: raise the flag, then spin. Core 0 keeps
+ * reading the sensor and shows the fault on the LED.
+ */
+static void net_give_up(const char *what) {
+	LOG("udp: %s, core 1 stopping (nothing can be sent)\r\n", what);
+	net_fault = true;
+	while (1) {
+		tight_loop_contents();
+	}
+}
+
 static void net_task(void) {
 	static struct tx_packet packet;		/* static: too big for the stack */
 
 	if (!net_init(&NET_CONFIG)) {
-		while (1) {			/* no chip: nothing to do here */
-			tight_loop_contents();
-		}
+		net_give_up("the W6300 did not start");
 	}
 	net_log_status();
 	if (socket(UDP_SOCKET, Sn_MR_UDP4, UDP_PORT, 0) != UDP_SOCKET) {
-		LOG("udp: socket failed\r\n");
-		return;
+		net_give_up("opening the socket failed");
 	}
 	LOG("udp: core 1 listening on port %u, waiting for a REQUEST\r\n", UDP_PORT);
 
@@ -150,7 +167,15 @@ static void net_task(void) {
 		if (transport_connected() && queue_try_remove(&tx_queue, &packet)) {
 			/* This may wait (ARP, chip buffers), which is fine:
 			 * core 0 keeps reading the sensor meanwhile. */
-			sendto_W6x00(UDP_SOCKET, packet.data, packet.len, peer_ip, peer_port, 4);
+			int32_t sent = sendto_W6x00(UDP_SOCKET, packet.data, packet.len,
+			                            peer_ip, peer_port, 4);
+
+			/* The chip refuses to send while the link is down or its
+			 * buffer is full. Count it, so the PC sees the loss in the
+			 * STATUS packet instead of just missing a subpage. */
+			if (sent != (int32_t)packet.len) {
+				send_failed++;
+			}
 		} else {
 			tight_loop_contents();
 		}
@@ -194,4 +219,12 @@ bool transport_send(const uint8_t *packet, size_t len) {
 	memcpy(slot.data, packet, len);
 	/* Never waits: a full queue means the packet is dropped and counted. */
 	return queue_try_add(&tx_queue, &slot);
+}
+
+uint32_t transport_dropped(void) {
+	return send_failed;
+}
+
+bool transport_fault(void) {
+	return net_fault;
 }

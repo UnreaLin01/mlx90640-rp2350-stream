@@ -36,3 +36,15 @@ bool transport_send(const uint8_t *packet, size_t len) {
 	tud_cdc_write_flush();
 	return true;
 }
+
+uint32_t transport_dropped(void) {
+	/* Nothing is queued behind transport_send(): a packet that fits in
+	 * the FIFO is always sent, so there is nothing to lose later. */
+	return 0;
+}
+
+bool transport_fault(void) {
+	/* The USB block is part of the MCU; there is no separate chip that
+	 * could fail to start. */
+	return false;
+}

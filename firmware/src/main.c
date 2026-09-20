@@ -42,6 +42,16 @@
 #define EEPROM_PERIOD_US	2000000
 #define REPORT_PERIOD_US	1000000
 
+/*
+ * LED patterns. Without a debugger the LED is the only thing the user can
+ * see, so each state gets its own speed:
+ *   1 Hz   running normally
+ *   ~3 Hz  the transport hardware never came up (Ethernet only)
+ *   ~5 Hz  the sensor did not start (fail_forever, never recovers)
+ */
+#define LED_PERIOD_US		1000000
+#define LED_PERIOD_FAULT_US	300000
+
 static uint16_t ee_data[MLX90640_EEPROM_DUMP_NUM];
 static uint16_t frame[SENSOR_FRAME_WORDS];
 
@@ -82,7 +92,7 @@ static void fail_forever(void) {
 
 int main(void) {
 	struct stats st;
-	uint64_t last_ready = 0, last_report, last_eeprom = 0;
+	uint64_t last_ready = 0, last_report, last_eeprom = 0, last_led = 0;
 	bool was_connected = false;
 	bool mark_b = false;
 	int last_subpage = -1;
@@ -164,19 +174,29 @@ int main(void) {
 		}
 		was_connected = connected;
 
+		/* --- Blink: speed says which state we are in ------------------- */
+		if (now - last_led >= (transport_fault() ? LED_PERIOD_FAULT_US
+		                                         : LED_PERIOD_US)) {
+			gpio_xor_mask(1u << PIN_LED);
+			last_led = now;
+		}
+
 		/* --- Once per second: STATUS packet and RTT line ---------------- */
 		if (now - last_report >= REPORT_PERIOD_US) {
-			totals.tx_dropped = stream_dropped();
+			/* Two places lose packets: stream.c when the transport
+			 * refuses one, and the transport itself when a queued
+			 * packet never reaches the wire. Report the sum. */
+			totals.tx_dropped = stream_dropped() + transport_dropped();
 			totals.read_us_max = st.read_max;
 			stream_send_status(&totals, now);
 			LOG("%u subpages/s | read %u..%u us | gap %u..%u us | receiver %s | "
-			    "total %u, read_err %u order_err %u wait_err %u dropped %u\r\n",
+			    "total %u, read_err %u order_err %u wait_err %u dropped %u%s\r\n",
 			    (unsigned)st.subpages, (unsigned)st.read_min, (unsigned)st.read_max,
 			    (unsigned)st.gap_min, (unsigned)st.gap_max,
 			    connected ? "connected" : "none", (unsigned)totals.subpages,
 			    (unsigned)totals.read_errors, (unsigned)totals.order_errors,
-			    (unsigned)totals.wait_errors, (unsigned)totals.tx_dropped);
-			gpio_xor_mask(1u << PIN_LED);
+			    (unsigned)totals.wait_errors, (unsigned)totals.tx_dropped,
+			    transport_fault() ? " | TRANSPORT FAULT" : "");
 			stats_reset(&st);
 			last_report = now;
 		}

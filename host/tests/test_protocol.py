@@ -5,14 +5,15 @@ Run:  host/.venv/Scripts/python host/tests/test_protocol.py -v
 
 import os
 import random
+import struct
 import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from mlxstream.blocks import BlockAssembler  # noqa: E402
-from mlxstream.protocol import (PART_MAX, TYPE_EEPROM, TYPE_SUBPAGE,  # noqa: E402
-                                StreamParser, build_packet)
+from mlxstream.protocol import (PART_MAX, TYPE_EEPROM, TYPE_STATUS,  # noqa: E402
+                                TYPE_SUBPAGE, StreamParser, build_packet)
 
 
 def block_packets(type_, subpage, seq, data, ts=1234):
@@ -103,6 +104,27 @@ class ParserTests(unittest.TestCase):
         fd = blocks[1].frame_data()
         self.assertEqual(len(fd), 834)
         self.assertEqual(fd[833], 1)
+
+    def test_wrong_sized_block_is_counted_not_raised(self):
+        """A complete block of the wrong length must be dropped and counted.
+
+        It can only come from a sender that speaks a different version of
+        the protocol. The tools downstream unpack these bytes into
+        fixed-size arrays, so letting it through would crash them."""
+        pk = (block_packets(TYPE_SUBPAGE, 0, 0, bytes(1000))    # should be 1666
+              + block_packets(TYPE_SUBPAGE, 1, 1, subpage_bytes(1)))
+        parser, asm, blocks = parse_all([b"".join(pk)])
+        self.assertEqual(parser.crc_errors, 0)                  # the bytes were fine
+        self.assertEqual(asm.bad_blocks.get(TYPE_SUBPAGE), 1)
+        self.assertEqual([b.seq for b in blocks], [1])          # the good one survives
+
+    def test_longer_status_still_parses(self):
+        """A newer firmware may append fields to STATUS. The ones we know
+        keep their place, so the block must still be accepted."""
+        counters = struct.pack("<6I", 1, 2, 3, 4, 5, 6) + struct.pack("<I", 7)
+        _, asm, blocks = parse_all([b"".join(block_packets(TYPE_STATUS, 0xFF, 0, counters))])
+        self.assertEqual(asm.bad_blocks, {})
+        self.assertEqual(blocks[0].status()["tx_dropped"], 5)
 
 
 if __name__ == "__main__":

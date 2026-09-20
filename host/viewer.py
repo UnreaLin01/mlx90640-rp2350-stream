@@ -19,7 +19,8 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from mlxstream.worker import CALC_CLASSES, DEFAULT_CALC, StreamWorker
+from mlxstream.pipeline import CALC_CLASSES, DEFAULT_CALC
+from mlxstream.worker import StreamWorker
 
 ROWS, COLS = 24, 32
 HISTORY_S = 30.0

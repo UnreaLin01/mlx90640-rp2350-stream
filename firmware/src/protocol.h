@@ -25,6 +25,10 @@ enum proto_type {
 	PROTO_TYPE_EEPROM = 2,
 	PROTO_TYPE_STATUS = 3,
 	PROTO_TYPE_REQUEST = 4,		/* PC -> board (UDP only) */
+
+	/* One past the last type. Size any per-type array with this, never
+	 * with a number: adding a type then cannot overflow it. */
+	PROTO_TYPE_COUNT
 };
 
 /* REQUEST payload flags */

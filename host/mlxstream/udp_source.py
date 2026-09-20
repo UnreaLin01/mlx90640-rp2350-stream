@@ -59,6 +59,7 @@ def _remember_address(ip):
 class UdpSource:
     def __init__(self, ip=None, port=BOARD_PORT, timeout=0.05):
         self._port = port
+        self._timeout = timeout
         self._known_ip = ip or _remembered_address()
         self._found = False
         self.name = f"udp {self._known_ip or 'searching'}:{port}"
@@ -112,7 +113,8 @@ class UdpSource:
         except (socket.timeout, BlockingIOError, OSError):
             pass
         finally:
-            self._sock.settimeout(0.05)
+            # Back to the blocking timeout, so the next read waits again.
+            self._sock.settimeout(self._timeout)
         return b"".join(chunks)
 
     def close(self):

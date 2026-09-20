@@ -1,7 +1,7 @@
 """Check that calculated temperatures are sensible (M5 automatic check).
 
-Converts every subpage to temperatures with the Melexis code (method A)
-and checks, for every full image (after both subpages were seen):
+Converts every subpage to temperatures and checks, for every full image
+(after both subpages were seen):
   - no NaN / inf pixels
   - the image median is within the room range 15..40 degC
   - the sensor's own temperature Ta is within 15..60 degC
@@ -9,7 +9,7 @@ Also reports how long one conversion takes.
 
 Usage:
     host/.venv/Scripts/python host/check_temps.py --file captures/m4_stream_65s.bin
-    host/.venv/Scripts/python host/check_temps.py [--port COM9] --duration 20
+    host/.venv/Scripts/python host/check_temps.py [--source usb] --duration 20
 """
 
 import argparse
@@ -18,8 +18,7 @@ import time
 
 import numpy as np
 
-from mlxstream.protocol import TYPE_EEPROM, TYPE_SUBPAGE
-from mlxstream.worker import CALC_CLASSES, DEFAULT_CALC
+from mlxstream.pipeline import CALC_CLASSES, DEFAULT_CALC, ImageStream
 from mlxstream.receiver import Receiver
 from mlxstream.sources import FileSource, open_source
 
@@ -38,8 +37,7 @@ def main():
 
     src = FileSource(args.file) if args.file else open_source(args.source)
     rx = Receiver(src)
-    calc = None
-    seen = set()
+    images = ImageStream(args.calc)
     medians, mins, maxs, tas, bad_images, calc_ms = [], [], [], [], 0, []
     t0 = time.perf_counter()
     try:
@@ -50,23 +48,20 @@ def main():
             if args.file and src.eof:
                 break
             for b in blocks:
-                if b.type == TYPE_EEPROM and calc is None:
-                    calc = CALC_CLASSES[args.calc](b.words())
-                    print(f"EEPROM received, ExtractParameters -> {calc.extract_error}")
-                elif b.type == TYPE_SUBPAGE and calc is not None:
-                    t = time.perf_counter()
-                    img = calc.update(b.frame_data())
-                    calc_ms.append((time.perf_counter() - t) * 1e3)
-                    seen.add(b.subpage)
-                    if len(seen) < 2:
-                        continue            # half the image is still empty
-                    if not np.all(np.isfinite(img)):
-                        bad_images += 1
-                        continue
-                    medians.append(float(np.median(img)))
-                    mins.append(float(img.min()))
-                    maxs.append(float(img.max()))
-                    tas.append(calc.ta)
+                image = images.push(b)
+                if images.new_eeprom:
+                    print(f"EEPROM received, ExtractParameters -> "
+                          f"{images.calc.extract_error}")
+                if image is None:
+                    continue
+                calc_ms.append(images.convert_ms)
+                if not np.all(np.isfinite(image)):
+                    bad_images += 1
+                    continue
+                medians.append(float(np.median(image)))
+                mins.append(float(image.min()))
+                maxs.append(float(image.max()))
+                tas.append(images.ta)
     finally:
         rx.close()
 
@@ -87,6 +82,7 @@ def main():
          ROOM_RANGE[0] <= med.min() and med.max() <= ROOM_RANGE[1]),
         (f"Ta in {TA_RANGE[0]:.0f}..{TA_RANGE[1]:.0f} degC",
          TA_RANGE[0] <= ta.min() and ta.max() <= TA_RANGE[1]),
+        ("no malformed blocks", sum(rx.assembler.bad_blocks.values()) == 0),
     ]
     ok = True
     for name, passed in checks:

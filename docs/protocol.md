@@ -49,7 +49,7 @@ STATUS payload：
 | 1 | `read_errors` | Melexis 讀取／資料檢查錯誤次數 |
 | 2 | `order_errors` | subpage 編號沒有 0/1 交替的次數（代表漏讀） |
 | 3 | `wait_errors` | 等待新資料逾時或 I2C 錯誤次數 |
-| 4 | `tx_dropped` | 已連線但傳輸緩衝區滿、只好丟掉的封包數 |
+| 4 | `tx_dropped` | 已連線但沒送出去的封包數，包含傳輸緩衝區滿而丟掉的，以及排進佇列後網路晶片拒收的 |
 | 5 | `read_us_max` | 過去一秒內最長的 subpage 讀取時間（µs） |
 
 ## REQUEST（電腦 → 開發板）
