@@ -36,6 +36,43 @@ add_library(mlx90640_api OBJECT ${MLX_DIR}/functions/MLX90640_API.c)
 target_include_directories(mlx90640_api PUBLIC ${MLX_DIR}/headers)
 
 # ---------------------------------------------------------------------------
+# WIZnet W6300 Ethernet (third-party code, kept unmodified)
+#
+# Only the files this project needs are built, with the settings the WIZnet
+# build uses for the W6300-EVB-Pico2: chip W6300, QSPI in quad mode.
+# The chip is driven over QSPI by PIO on GPIO15-22 (fixed by the board).
+# ---------------------------------------------------------------------------
+set(WIZ_DIR ${CMAKE_CURRENT_LIST_DIR}/../third_party/WIZnet-PICO-C)
+set(WIZ_IO ${WIZ_DIR}/libraries/ioLibrary_Driver)
+set(WIZ_PORT ${WIZ_DIR}/port)
+
+add_library(wiznet STATIC
+	${WIZ_IO}/Ethernet/socket.c
+	${WIZ_IO}/Ethernet/wizchip_conf.c
+	${WIZ_IO}/Ethernet/W6300/w6300.c
+	${WIZ_PORT}/ioLibrary_Driver/src/wizchip_spi.c
+	${WIZ_PORT}/ioLibrary_Driver/src/wizchip_gpio_irq.c
+	${WIZ_PORT}/ioLibrary_Driver/src/wizchip_qspi_pio.c
+	${WIZ_PORT}/timer/timer.c
+)
+pico_generate_pio_header(wiznet ${WIZ_PORT}/ioLibrary_Driver/src/wizchip_qspi_pio.pio)
+target_compile_definitions(wiznet PUBLIC
+	_WIZCHIP_=W6300
+	DEVICE_BOARD_NAME=W6300_EVB_PICO2
+	_WIZCHIP_QSPI_MODE_=QSPI_QUAD_MODE
+)
+target_include_directories(wiznet PUBLIC
+	${WIZ_IO}/Ethernet
+	${WIZ_IO}/Ethernet/W6300
+	${WIZ_PORT}
+	${WIZ_PORT}/ioLibrary_Driver/inc
+	${WIZ_PORT}/timer
+)
+target_link_libraries(wiznet PUBLIC
+	pico_stdlib hardware_pio hardware_spi hardware_dma hardware_clocks
+)
+
+# ---------------------------------------------------------------------------
 # Shared project code: board pin map, logging
 # ---------------------------------------------------------------------------
 add_library(project_common INTERFACE)
@@ -103,6 +140,10 @@ add_firmware(eeprom_soak_1000k tests/eeprom_test.c)
 target_compile_definitions(eeprom_soak_1000k PRIVATE
 	I2C_TEST_HZ=1000000 READ_INTERVAL_MS=0 REPORT_EVERY=500)
 target_link_libraries(eeprom_soak_1000k PRIVATE sensor)
+
+# Ethernet bring-up test (M6)
+add_firmware(net_test tests/net_test.c src/net.c)
+target_link_libraries(net_test PRIVATE wiznet pico_unique_id)
 
 # I2C line rise time test (M2)
 add_firmware(rise_test tests/rise_test.c)
