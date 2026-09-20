@@ -4,16 +4,26 @@
  * The PC finds the board by VID/PID plus the product string below
  * (host/mlxstream/sources.py). VID 0x2E8A / PID 0x0009 are the ones the
  * Pico SDK uses for its own USB serial port.
+ *
+ * There is a second interface: the Raspberry Pi "reset" interface. It lets
+ * picotool restart the board into BOOTSEL mode by itself, so flashing over
+ * USB does not need the BOOTSEL button (scripts/flash_usb.ps1). The work is
+ * done by the SDK's pico_usb_reset library; here we only add the interface
+ * to the descriptors. It also needs bcdUSB 0x0210 plus a Microsoft OS 2.0
+ * descriptor (the library provides it), so Windows binds a driver to it
+ * without anything being installed.
  */
 
 #include <string.h>
 
 #include "pico/unique_id.h"
+#include "pico/usb_reset.h"
 #include "tusb.h"
 
 #define USB_VID		0x2E8A
 #define USB_PID		0x0009
-#define USB_BCD		0x0200
+/* 0x0210: needed for the Microsoft OS 2.0 descriptor of the reset interface. */
+#define USB_BCD		0x0210
 
 #define PRODUCT_NAME	"MLX90640 Thermal Stream"
 
@@ -51,14 +61,20 @@ const uint8_t *tud_descriptor_device_cb(void) {
 enum {
 	ITF_NUM_CDC = 0,
 	ITF_NUM_CDC_DATA,
+	ITF_NUM_RESET,		/* picotool's reset interface */
 	ITF_NUM_TOTAL,
 };
+
+/* The reset interface number must match what the library puts in the
+ * Microsoft OS 2.0 descriptor. */
+static_assert(ITF_NUM_RESET == PICO_USB_RESET_MS_OS_20_DESCRIPTOR_ITF,
+              "ITF_NUM_RESET must equal PICO_USB_RESET_MS_OS_20_DESCRIPTOR_ITF");
 
 #define EPNUM_CDC_NOTIF		0x81
 #define EPNUM_CDC_OUT		0x02
 #define EPNUM_CDC_IN		0x82
 
-#define CONFIG_TOTAL_LEN	(TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
+#define CONFIG_TOTAL_LEN	(TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RPI_RESET_DESC_LEN)
 
 static const uint8_t desc_configuration[] = {
 	/* config number, interface count, string index, total length,
@@ -66,6 +82,8 @@ static const uint8_t desc_configuration[] = {
 	TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
 	/* interface number, string index, notify EP + size, data EPs + size */
 	TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
+	/* interface number, string index */
+	TUD_RPI_RESET_DESCRIPTOR(ITF_NUM_RESET, 5),
 };
 
 const uint8_t *tud_descriptor_configuration_cb(uint8_t index) {
@@ -83,6 +101,7 @@ enum {
 	STRID_PRODUCT,
 	STRID_SERIAL,
 	STRID_CDC,
+	STRID_RESET,
 	STRID_COUNT,
 };
 
@@ -91,6 +110,7 @@ static const char *const string_desc[STRID_COUNT] = {
 	[STRID_PRODUCT] = PRODUCT_NAME,
 	[STRID_SERIAL] = NULL,		/* filled from the chip's unique ID */
 	[STRID_CDC] = PRODUCT_NAME " data",
+	[STRID_RESET] = "Reset",
 };
 
 /* USB strings are UTF-16. Longest string here is well below 32 chars. */

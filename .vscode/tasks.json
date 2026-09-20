@@ -3,8 +3,13 @@
     // tasks named "Compile Project" and "Run Project".
     //
     // They call this project's own scripts, so the buttons and the command
-    // line do exactly the same thing: pinned tool versions (scripts/env.ps1)
-    // and flashing over SWD with J-Link, not BOOTSEL/picotool.
+    // line do exactly the same thing, with the tool versions pinned in
+    // scripts/env.ps1.
+    //
+    // "Run Project" flashes over USB with picotool and needs no J-Link and
+    // no BOOTSEL button (the USB firmware has the reset interface). The
+    // J-Link tasks are for debugging, and for firmware without USB
+    // (mlx_thermal_udp), which USB flashing cannot restart by itself.
     "version": "2.0.0",
     "tasks": [
         {
@@ -27,14 +32,28 @@
             "args": [
                 "-NoProfile",
                 "-ExecutionPolicy", "Bypass",
-                "-File", "${workspaceFolder}/scripts/flash.ps1"
+                "-File", "${workspaceFolder}/scripts/flash_usb.ps1"
             ],
             "dependsOn": "Compile Project",
             "problemMatcher": [],
             "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
         },
         {
-            "label": "Flash (choose firmware)",
+            "label": "Flash over USB (choose firmware)",
+            "type": "process",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "${workspaceFolder}/scripts/flash_usb.ps1",
+                "-Firmware", "${input:firmware}"
+            ],
+            "dependsOn": "Compile Project",
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+        },
+        {
+            "label": "Flash with J-Link (choose firmware)",
             "type": "process",
             "command": "powershell.exe",
             "args": [

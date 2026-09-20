@@ -107,7 +107,16 @@ add_library(stream_usb STATIC
 	src/usb_descriptors.c
 )
 target_compile_options(stream_usb PRIVATE -Wall -Wextra)
-target_link_libraries(stream_usb PUBLIC project_common sensor tinyusb_device pico_unique_id)
+target_link_libraries(stream_usb PUBLIC
+	project_common sensor tinyusb_device pico_unique_id pico_usb_reset)
+# picotool can restart the board into BOOTSEL by itself (no button press),
+# see src/usb_descriptors.c.
+target_compile_definitions(stream_usb PUBLIC
+	PICO_ENABLE_USB_RESET_VIA_VENDOR_INTERFACE=1
+	PICO_USB_RESET_INCLUDE_DEFAULT_APP_DRIVER_CB=1
+	PICO_USB_RESET_SUPPORT_MS_OS_20_DESCRIPTOR=1
+	PICO_USB_RESET_MS_OS_20_DESCRIPTOR_ITF=2
+)
 
 # Same protocol over UDP (M7). Only the transport differs; main.c is shared.
 add_library(stream_udp STATIC
