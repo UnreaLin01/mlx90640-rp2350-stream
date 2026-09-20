@@ -68,9 +68,10 @@ target_link_libraries(wiznet PUBLIC
 # ---------------------------------------------------------------------------
 # Shared project code: board pin map, logging
 # ---------------------------------------------------------------------------
-add_library(project_common INTERFACE)
-target_include_directories(project_common INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src)
-target_link_libraries(project_common INTERFACE pico_stdlib segger_rtt)
+add_library(project_common STATIC src/log.c)
+target_compile_options(project_common PRIVATE -Wall -Wextra)
+target_include_directories(project_common PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src)
+target_link_libraries(project_common PUBLIC pico_stdlib hardware_sync segger_rtt)
 
 # Sensor access: I2C bus driver, the I2C functions the Melexis library
 # needs, and sensor control (setup, wait for data, read a subpage)
@@ -126,7 +127,9 @@ add_library(stream_udp STATIC
 	src/net.c
 )
 target_compile_options(stream_udp PRIVATE -Wall -Wextra)
-target_link_libraries(stream_udp PUBLIC project_common sensor wiznet pico_unique_id)
+# pico_multicore: the network task runs on core 1 (see transport_udp.c)
+target_link_libraries(stream_udp PUBLIC
+	project_common sensor wiznet pico_unique_id pico_multicore)
 
 add_firmware(mlx_thermal src/main.c)		# main firmware, USB (32 Hz)
 target_link_libraries(mlx_thermal PRIVATE sensor stream_usb)

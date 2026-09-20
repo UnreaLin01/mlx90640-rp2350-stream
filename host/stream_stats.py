@@ -48,6 +48,7 @@ class Checker:
         self.status_first = None
         self.status_last = None
         self.delays = []        # host arrival time minus device timestamp
+        self.t_last = None      # arrival time of the last subpage
 
     def on_block(self, b, arrival):
         if b.type == TYPE_SUBPAGE:
@@ -58,6 +59,7 @@ class Checker:
             self.delays.append(arrival - b.timestamp_us / 1e6)
             if self._t_first is None:
                 self._t_first = arrival
+            self.t_last = arrival
             if self.last_subpage is not None and b.subpage == self.last_subpage:
                 if arrival - self._t_first <= CONNECT_WINDOW_S:
                     self.alternation_errors_at_connect += 1
@@ -78,6 +80,13 @@ class Checker:
             if self.status_first is None:
                 self.status_first = s
             self.status_last = s
+
+    def host_rate(self):
+        """Receive rate measured between the first and the last subpage, so
+        the time before the stream starts does not count."""
+        if self.subpages < 2 or self.t_last is None:
+            return 0.0
+        return (self.subpages - 1) / (self.t_last - self._t_first)
 
     def device_rate(self):
         """Subpage rate from the device's own timestamps."""
@@ -133,7 +142,7 @@ def main():
     elapsed = time.perf_counter() - t0
 
     # --- Summary -----------------------------------------------------------
-    host_rate = chk.subpages / elapsed
+    host_rate = chk.host_rate()
     dev_rate = chk.device_rate()
     m3_rate = 1e6 / M3_PERIOD_US
     s0, s1 = chk.status_first or {}, chk.status_last or {}
