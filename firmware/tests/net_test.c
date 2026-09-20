@@ -30,6 +30,8 @@
 #define PAYLOAD_LEN	1024		/* fits in one Ethernet frame */
 
 static const struct net_config CONFIG = {
+	.use_dhcp = true,
+	.dhcp_timeout_ms = 5000,
 	.ip = { 192, 168, 1, 200 },
 	.mask = { 255, 255, 255, 0 },
 	.gateway = { 192, 168, 1, 1 },

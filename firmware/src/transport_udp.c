@@ -51,8 +51,16 @@
  * 16 slots hold a quarter second of data. */
 #define TX_QUEUE_SLOTS		16
 
-/* The board's own address. The PC's address is learned, not set here. */
+/*
+ * The board's own address: DHCP first, and this fixed address if no DHCP
+ * server answers. Either way the PC finds the board, because it searches
+ * for it and then remembers the address (host/mlxstream/udp_source.py).
+ * The PC's address is learned from its REQUEST packets, never set here.
+ */
 static const struct net_config NET_CONFIG = {
+	.use_dhcp = true,
+	/* Long enough for one retry by the DHCP library (it waits 10 s). */
+	.dhcp_timeout_ms = 15000,
 	.ip = { 192, 168, 1, 200 },
 	.mask = { 255, 255, 255, 0 },
 	.gateway = { 192, 168, 1, 1 },
@@ -135,6 +143,7 @@ static void net_task(void) {
 	LOG("udp: core 1 listening on port %u, waiting for a REQUEST\r\n", UDP_PORT);
 
 	while (1) {
+		net_poll();			/* keep the DHCP lease alive */
 		if (getSn_RX_RSR(UDP_SOCKET) > 0) {
 			handle_request();
 		}

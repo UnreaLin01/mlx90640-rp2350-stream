@@ -42,6 +42,7 @@ add_library(wiznet STATIC
 	${WIZ_IO}/Ethernet/socket.c
 	${WIZ_IO}/Ethernet/wizchip_conf.c
 	${WIZ_IO}/Ethernet/W6300/w6300.c
+	${WIZ_IO}/Internet/DHCP/dhcp.c
 	${WIZ_PORT}/ioLibrary_Driver/src/wizchip_spi.c
 	${WIZ_PORT}/ioLibrary_Driver/src/wizchip_gpio_irq.c
 	${WIZ_PORT}/ioLibrary_Driver/src/wizchip_qspi_pio.c
@@ -57,6 +58,7 @@ target_compile_definitions(wiznet PUBLIC
 target_include_directories(wiznet SYSTEM PUBLIC
 	${WIZ_IO}/Ethernet
 	${WIZ_IO}/Ethernet/W6300
+	${WIZ_IO}/Internet/DHCP
 	${WIZ_PORT}
 	${WIZ_PORT}/ioLibrary_Driver/inc
 	${WIZ_PORT}/timer
@@ -127,9 +129,12 @@ add_library(stream_udp STATIC
 	src/net.c
 )
 target_compile_options(stream_udp PRIVATE -Wall -Wextra)
-# pico_multicore: the network task runs on core 1 (see transport_udp.c)
+# pico_multicore: the network task runs on core 1 (see transport_udp.c).
+# Core 1 gets 4 KB of stack (default 2 KB): the WIZnet and DHCP code nests
+# a few levels deep.
 target_link_libraries(stream_udp PUBLIC
 	project_common sensor wiznet pico_unique_id pico_multicore)
+target_compile_definitions(stream_udp PUBLIC PICO_CORE1_STACK_SIZE=4096)
 
 add_firmware(mlx_thermal src/main.c)		# main firmware, USB (32 Hz)
 target_link_libraries(mlx_thermal PRIVATE sensor stream_usb)
