@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 860" width="1180" height="860" font-family="Segoe UI, Microsoft JhengHei, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#5b6b7f"/>
+    </marker>
+    <marker id="aDim" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#9aa7b6"/>
+    </marker>
+    <style>
+      .title { font-size: 25px; font-weight: 650; fill: #1d2733; }
+      .sub   { font-size: 14px; fill: #6b7787; }
+      .cfg   { font-size: 16px; font-weight: 650; }
+      .box   { font-size: 15px; font-weight: 600; fill: #1d2733; }
+      .small { font-size: 12.5px; fill: #5b6b7f; }
+      .pin   { font-size: 12px; font-weight: 600; fill: #3d4f63; }
+      .link  { font-size: 12.5px; font-weight: 600; fill: #1d4e79; }
+      .dim   { font-size: 12.5px; fill: #9aa7b6; }
+    </style>
+  </defs>
+
+  <rect width="1180" height="860" fill="#ffffff"/>
+  <text class="title" x="36" y="46">硬體架構</text>
+  <text class="sub" x="36" y="70">兩種組態的差別只在「資料怎麼送到電腦」。感測器接法、韌體邏輯、電腦端程式完全相同。</text>
+
+  <!-- ============ Config A : USB ============ -->
+  <rect x="36" y="94" width="1108" height="316" rx="14" fill="#f7f9fc" stroke="#cfd8e3"/>
+  <rect x="36" y="94" width="1108" height="30" rx="14" fill="#e6ebf2"/>
+  <rect x="36" y="110" width="1108" height="14" fill="#e6ebf2"/>
+  <text class="cfg" x="54" y="116" fill="#3d4f63">組態 A：USB 模式　　韌體 mlx_thermal　　最簡單，一條 USB 線就能用</text>
+
+  <!-- sensor -->
+  <rect x="60" y="164" width="188" height="118" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="box" x="154" y="192" text-anchor="middle">MLX90640</text>
+  <text class="small" x="154" y="213" text-anchor="middle">SparkFun 模組</text>
+  <text class="small" x="154" y="231" text-anchor="middle">32 × 24 熱影像</text>
+  <text class="small" x="154" y="249" text-anchor="middle">3.3V 供電，共地</text>
+  <text class="small" x="154" y="269" text-anchor="middle">板載上拉（約 220 ns）</text>
+
+  <!-- board -->
+  <rect x="356" y="146" width="330" height="200" rx="12" fill="#ffffff" stroke="#6f8fae" stroke-width="2"/>
+  <text class="box" x="521" y="174" text-anchor="middle">W6300-EVB-Pico2</text>
+  <rect x="376" y="190" width="290" height="60" rx="8" fill="#eef4fb" stroke="#c7dcf0"/>
+  <text class="small" x="521" y="212" text-anchor="middle" font-weight="600" fill="#1d4e79">RP2350A　雙核心 Cortex-M33 @150 MHz</text>
+  <text class="small" x="521" y="232" text-anchor="middle">USB 模式只用核心 0</text>
+  <rect x="376" y="262" width="290" height="62" rx="8" fill="#f4f6f8" stroke="#dde3ea"/>
+  <text class="small" x="521" y="284" text-anchor="middle" font-weight="600" fill="#9aa7b6">W6300 乙太網路晶片</text>
+  <text class="dim" x="521" y="304" text-anchor="middle">此組態未使用（GPIO15～22 仍保留）</text>
+
+  <!-- PC -->
+  <rect x="806" y="164" width="188" height="118" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="box" x="900" y="196" text-anchor="middle">電腦</text>
+  <text class="small" x="900" y="219" text-anchor="middle">Windows</text>
+  <text class="small" x="900" y="239" text-anchor="middle">viewer.py</text>
+  <text class="small" x="900" y="259" text-anchor="middle">（預設 --source usb）</text>
+
+  <!-- links A -->
+  <path d="M248,206 H350" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <path d="M350,226 H248" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <text class="link" x="299" y="196" text-anchor="middle">I2C 1 MHz</text>
+  <text class="pin" x="299" y="248" text-anchor="middle">SDA → GP4</text>
+  <text class="pin" x="299" y="264" text-anchor="middle">SCL → GP5</text>
+
+  <path d="M686,216 H800" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <text class="link" x="743" y="206" text-anchor="middle">USB CDC</text>
+  <text class="small" x="743" y="236" text-anchor="middle">Full-speed 12 Mbps</text>
+  <text class="small" x="743" y="254" text-anchor="middle">供電 + 資料</text>
+  <text class="small" x="743" y="272" text-anchor="middle">也用於燒錄（picotool）</text>
+
+  <!-- optional tools A -->
+  <rect x="60" y="306" width="188" height="80" rx="10" fill="#fffdf6" stroke="#e5d6a8" stroke-dasharray="4 3"/>
+  <text class="small" x="154" y="330" text-anchor="middle" font-weight="600" fill="#8a6d1f">選用：Logic 8</text>
+  <text class="small" x="154" y="350" text-anchor="middle">CH0 SDA／CH1 SCL</text>
+  <text class="small" x="154" y="368" text-anchor="middle">CH2 GP6／CH3 GP7 標記</text>
+
+  <rect x="806" y="306" width="188" height="80" rx="10" fill="#fffdf6" stroke="#e5d6a8" stroke-dasharray="4 3"/>
+  <text class="small" x="900" y="330" text-anchor="middle" font-weight="600" fill="#8a6d1f">選用：J-Link</text>
+  <text class="small" x="900" y="350" text-anchor="middle">SWD：燒錄 + RTT log</text>
+  <text class="small" x="900" y="368" text-anchor="middle">VTref 接 3V3</text>
+
+  <path d="M248,346 H350 V300" stroke="#c9b26a" fill="none" stroke-dasharray="4 3"/>
+  <path d="M806,346 H700 V300" stroke="#c9b26a" fill="none" stroke-dasharray="4 3"/>
+
+  <!-- ============ Config B : Ethernet ============ -->
+  <rect x="36" y="440" width="1108" height="330" rx="14" fill="#f2faf4" stroke="#bfe3c9"/>
+  <rect x="36" y="440" width="1108" height="30" rx="14" fill="#daf0e1"/>
+  <rect x="36" y="456" width="1108" height="14" fill="#daf0e1"/>
+  <text class="cfg" x="54" y="462" fill="#1f6b3a">組態 B：乙太網路模式　　韌體 mlx_thermal_udp　　網路在核心 1，感測器不受網路影響</text>
+
+  <!-- sensor B -->
+  <rect x="60" y="512" width="188" height="118" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
+  <text class="box" x="154" y="540" text-anchor="middle">MLX90640</text>
+  <text class="small" x="154" y="561" text-anchor="middle">接法與組態 A 相同</text>
+  <text class="small" x="154" y="581" text-anchor="middle">GP4 / GP5</text>
+  <text class="small" x="154" y="601" text-anchor="middle">3.3V，共地</text>
+
+  <!-- board B -->
+  <rect x="356" y="494" width="330" height="218" rx="12" fill="#ffffff" stroke="#4f9268" stroke-width="2"/>
+  <text class="box" x="521" y="522" text-anchor="middle">W6300-EVB-Pico2</text>
+  <rect x="376" y="538" width="290" height="70" rx="8" fill="#eef4fb" stroke="#c7dcf0"/>
+  <text class="small" x="521" y="560" text-anchor="middle" font-weight="600" fill="#1d4e79">RP2350A　雙核心 Cortex-M33</text>
+  <text class="small" x="521" y="580" text-anchor="middle">核心 0：I2C 讀取</text>
+  <text class="small" x="521" y="598" text-anchor="middle">核心 1：網路</text>
+  <rect x="376" y="620" width="290" height="72" rx="8" fill="#eaf7ee" stroke="#a9d9ba"/>
+  <text class="small" x="521" y="642" text-anchor="middle" font-weight="600" fill="#1f6b3a">W6300 乙太網路晶片</text>
+  <text class="small" x="521" y="662" text-anchor="middle">QSPI 由 PIO 驅動，GPIO15～22</text>
+  <text class="small" x="521" y="680" text-anchor="middle">DHCP，失敗則用 192.168.1.200</text>
+
+  <!-- router -->
+  <rect x="756" y="512" width="150" height="118" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
+  <text class="box" x="831" y="544" text-anchor="middle">路由器</text>
+  <text class="small" x="831" y="566" text-anchor="middle">192.168.1.1</text>
+  <text class="small" x="831" y="586" text-anchor="middle">DHCP 伺服器</text>
+  <text class="small" x="831" y="606" text-anchor="middle">LAN 與 Wi-Fi 同網段</text>
+
+  <!-- PC B -->
+  <rect x="956" y="512" width="168" height="118" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
+  <text class="box" x="1040" y="544" text-anchor="middle">電腦</text>
+  <text class="small" x="1040" y="566" text-anchor="middle">無實體網路埠</text>
+  <text class="small" x="1040" y="586" text-anchor="middle">以 Wi-Fi 連線</text>
+  <text class="small" x="1040" y="606" text-anchor="middle">viewer.py --source udp</text>
+
+  <!-- links B -->
+  <path d="M248,554 H350" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <path d="M350,574 H248" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <text class="link" x="299" y="544" text-anchor="middle">I2C 1 MHz</text>
+
+  <path d="M686,560 H750" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <text class="link" x="718" y="546" text-anchor="middle">網路線</text>
+  <text class="small" x="718" y="588" text-anchor="middle">UDP 5005</text>
+
+  <path d="M906,560 H950" stroke="#5b6b7f" fill="none" marker-end="url(#a)"/>
+  <text class="link" x="928" y="546" text-anchor="middle">Wi-Fi</text>
+
+  <!-- usb power -->
+  <rect x="356" y="736" width="330" height="26" rx="8" fill="#fffdf6" stroke="#e5d6a8" stroke-dasharray="4 3"/>
+  <text class="small" x="521" y="754" text-anchor="middle" fill="#8a6d1f">USB 仍接著：只供電（此韌體沒有 USB 資料功能，燒錄需 BOOTSEL 或 J-Link）</text>
+
+  <text class="small" x="1064" y="664" text-anchor="end">實測 35 Mbit/s；串流只用約 0.43 Mbit/s</text>
+  <text class="small" x="1064" y="684" text-anchor="end">延遲抖動主要來自 Wi-Fi 那一段</text>
+
+  <!-- footer note -->
+  <text class="small" x="36" y="806" font-weight="600" fill="#1d2733">兩種組態共通</text>
+  <text class="small" x="36" y="828">感測器接線、I2C 時序、封包格式、電腦端解析與顯示程式完全相同；切換模式只需燒不同韌體，電腦端加 --source 參數。</text>
+  <text class="small" x="36" y="848">GP6／GP7 的計時標記兩種組態都有，可隨時接 Logic 8 量測；J-Link 亦可隨時接上讀 RTT log。</text>
+</svg>
