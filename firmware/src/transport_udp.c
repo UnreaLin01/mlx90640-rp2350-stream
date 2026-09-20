@@ -66,10 +66,17 @@ struct tx_packet {
 static queue_t tx_queue;
 static uint8_t rx_buf[PROTO_PACKET_MAX];
 
-/* Written by core 1, read by core 0. Both are single words, so reading a
- * half-written value is not possible. */
+/*
+ * Written by core 1, read by core 0.
+ *
+ * Both are single 32-bit words, which this CPU reads and writes in one go,
+ * so core 0 can never see a half-written value. A 64-bit time would be
+ * written in two halves and could be read while half updated, so the time
+ * is kept in 32 bits. It wraps every ~71 minutes; the subtraction in
+ * transport_connected() gives the right answer across a wrap.
+ */
 static volatile bool peer_known;
-static volatile uint64_t last_request_us;
+static volatile uint32_t last_request_us;
 
 /* Core 1 only. */
 static uint8_t peer_ip[4];
@@ -99,7 +106,7 @@ static void handle_request(void) {
 		LOG("udp: sending to %u.%u.%u.%u:%u\r\n",
 		    addr[0], addr[1], addr[2], addr[3], port);
 	}
-	last_request_us = time_us_64();
+	last_request_us = time_us_32();
 	peer_known = true;
 
 	if (pkt.payload_len >= 4) {
@@ -165,7 +172,7 @@ void transport_poll(void) {
 }
 
 bool transport_connected(void) {
-	return peer_known && time_us_64() - last_request_us < REQUEST_TIMEOUT_US;
+	return peer_known && time_us_32() - last_request_us < REQUEST_TIMEOUT_US;
 }
 
 bool transport_send(const uint8_t *packet, size_t len) {
