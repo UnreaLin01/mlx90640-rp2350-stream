@@ -19,7 +19,7 @@ import numpy as np
 import pyqtgraph as pg
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from mlxstream.worker import StreamWorker
+from mlxstream.worker import CALC_CLASSES, DEFAULT_CALC, StreamWorker
 
 ROWS, COLS = 24, 32
 HISTORY_S = 30.0
@@ -93,11 +93,11 @@ class Card(QtWidgets.QFrame):
 
 
 class Viewer(QtWidgets.QMainWindow):
-    def __init__(self, source, replay, calc="melexis"):
+    def __init__(self, source, replay, calc=DEFAULT_CALC):
         super().__init__()
         self.setWindowTitle("MLX90640 Thermal Viewer"
                             + (f"  [{'replay' if replay else source}]")
-                            + ("  [calc: python]" if calc == "python" else ""))
+                            + (f"  [calc: {calc}]" if calc != DEFAULT_CALC else ""))
         self.resize(1280, 800)
 
         self._last = None                   # last Frame
@@ -371,8 +371,8 @@ def main():
     ap.add_argument("--after", type=float, default=5.0)
     ap.add_argument("--avg", action="store_true", help="start with time averaging on")
     ap.add_argument("--smooth", action="store_true", help="start with smooth display on")
-    ap.add_argument("--calc", choices=["melexis", "python"], default="melexis",
-                    help="temperature calculation: Melexis C code (A) or numpy port (B)")
+    ap.add_argument("--calc", choices=list(CALC_CLASSES), default=DEFAULT_CALC,
+                    help="temperature calculation: numpy port (default) or Melexis C code")
     args = ap.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)

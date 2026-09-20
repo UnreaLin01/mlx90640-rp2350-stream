@@ -19,7 +19,7 @@ import time
 import numpy as np
 
 from mlxstream.protocol import TYPE_EEPROM, TYPE_SUBPAGE
-from mlxstream.worker import CALC_CLASSES
+from mlxstream.worker import CALC_CLASSES, DEFAULT_CALC
 from mlxstream.receiver import Receiver
 from mlxstream.sources import FileSource, open_source
 
@@ -32,8 +32,8 @@ def main():
     ap.add_argument("--file", help="saved stream (stream_stats.py --save)")
     ap.add_argument("--source", default="usb", help="usb, usb:COM9, udp, udp:<ip>")
     ap.add_argument("--duration", type=float, default=20.0, help="seconds, live mode only")
-    ap.add_argument("--calc", choices=list(CALC_CLASSES), default="melexis",
-                    help="Melexis C code (A) or numpy port (B)")
+    ap.add_argument("--calc", choices=list(CALC_CLASSES), default=DEFAULT_CALC,
+                    help="numpy port (default) or the official Melexis C code (needs the DLL)")
     args = ap.parse_args()
 
     src = FileSource(args.file) if args.file else open_source(args.source)

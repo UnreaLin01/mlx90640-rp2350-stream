@@ -14,9 +14,13 @@ from .calc_melexis import MelexisCalc
 from .calc_python import PythonCalc
 from .protocol import TYPE_EEPROM, TYPE_STATUS, TYPE_SUBPAGE
 
-# Temperature calculation: "melexis" = official C code (method A),
-# "python" = numpy port (method B). Both give the same result.
-CALC_CLASSES = {"melexis": MelexisCalc, "python": PythonCalc}
+# Temperature calculation. "python" is the default: it needs nothing but
+# numpy. "melexis" runs the official C code through a DLL that has to be
+# built first; it is kept as the reference to check the port against
+# (host/tools/compare_calc.py). Both give the same result to within
+# 0.04 mK, see docs/method_b_compare.md.
+CALC_CLASSES = {"python": PythonCalc, "melexis": MelexisCalc}
+DEFAULT_CALC = "python"
 from .receiver import Receiver
 from .sources import FileSource, open_source
 
@@ -36,7 +40,7 @@ class StreamWorker(QtCore.QObject):
     frame_ready = QtCore.Signal(object)
     message = QtCore.Signal(str)
 
-    def __init__(self, source="usb", replay=None, emissivity=0.95, calc="melexis"):
+    def __init__(self, source="usb", replay=None, emissivity=0.95, calc=DEFAULT_CALC):
         super().__init__()
         self._source = source
         self._replay = replay
