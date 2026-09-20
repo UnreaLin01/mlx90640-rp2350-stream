@@ -37,6 +37,7 @@ USB CDC 與 UDP 共用同一種封包，換傳輸層時封包格式不變。
 | 1 | SUBPAGE | 833 個 uint16：`[0..767]` 像素、`[768..831]` aux、`[832]` 控制暫存器 0x800D | 1666 | 2 | 每讀完一個 subpage |
 | 2 | EEPROM | 832 個 uint16：EEPROM 0x2400～0x273F | 1664 | 2 | 接收端連上時立即送一次，之後每 2 秒重送 |
 | 3 | STATUS | 6 個 uint32（見下表） | 24 | 1 | 每秒一次 |
+| 4 | REQUEST | 1 個 uint32 旗標（見下方） | 4 | 1 | **電腦 → 開發板**，每秒一次 |
 
 SUBPAGE 的 833 個 word 就是 Melexis `MLX90640_GetFrameData` 產生的 `frameData[0..832]`，接收端再補上 `frameData[833] = subpage` 即可直接交給 Melexis 的溫度換算函式。只有通過 Melexis 資料檢查的 subpage 才會送出。
 
@@ -50,6 +51,21 @@ STATUS payload：
 | 3 | `wait_errors` | 等待新資料逾時或 I2C 錯誤次數 |
 | 4 | `tx_dropped` | 已連線但傳輸緩衝區滿、只好丟掉的封包數 |
 | 5 | `read_us_max` | 過去一秒內最長的 subpage 讀取時間（µs） |
+
+## REQUEST（電腦 → 開發板）
+
+只有 UDP 傳輸層會用到（USB CDC 由開啟 COM port 代表接收端就緒）。封包格式與上面相同，`type = 4`、`subpage = 0xFF`、`part = 0`、`part_count = 1`、`seq` 由電腦端遞增、`timestamp_us` 可填 0。payload 為 1 個 uint32 旗標：
+
+| 位元 | 意義 |
+|---|---|
+| 0 | 立即重送一次 EEPROM |
+| 其餘 | 保留，填 0 |
+
+行為：
+- 開發板只在**收到過 REQUEST**、且距離最後一個 REQUEST 未超過 3 秒時送出資料；否則停止傳送（視為接收端離線）。
+- 開發板把資料送回**最後一個 REQUEST 的來源位址與埠號**，因此電腦端 IP 由 DHCP 變動也不影響。
+- 電腦端每秒送一次 REQUEST 當作保活，同時讓 Windows 防火牆維持這個連線的放行狀態。
+- 開發板收到的 REQUEST 一樣要通過 magic、版本、長度與 CRC 檢查，不合格就忽略。
 
 ## 接收端檢查
 

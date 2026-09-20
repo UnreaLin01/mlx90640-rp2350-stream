@@ -6,6 +6,7 @@
  * The full description is in docs/protocol.md; keep the two in sync.
  */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -23,7 +24,29 @@ enum proto_type {
 	PROTO_TYPE_SUBPAGE = 1,
 	PROTO_TYPE_EEPROM = 2,
 	PROTO_TYPE_STATUS = 3,
+	PROTO_TYPE_REQUEST = 4,		/* PC -> board (UDP only) */
 };
+
+/* REQUEST payload flags */
+#define PROTO_REQ_SEND_EEPROM	(1u << 0)
+
+/* Fields of a received packet, filled in by proto_parse(). */
+struct proto_packet {
+	uint8_t type;
+	uint8_t subpage;
+	uint8_t part;
+	uint8_t part_count;
+	uint16_t payload_len;
+	uint32_t seq;
+	uint64_t timestamp_us;
+	const uint8_t *payload;
+};
+
+/*
+ * Check one received packet (magic, version, lengths, CRC) and fill in
+ * `out`. Returns false if it is not a valid packet.
+ */
+bool proto_parse(const uint8_t *data, size_t len, struct proto_packet *out);
 
 /* Payload of a STATUS packet (all little-endian uint32). */
 struct proto_status {

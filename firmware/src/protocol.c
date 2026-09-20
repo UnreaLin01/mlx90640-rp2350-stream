@@ -48,6 +48,48 @@ static void put_u64(uint8_t *p, uint64_t v) {
 	put_u32(p + 4, (uint32_t)(v >> 32));
 }
 
+static uint16_t get_u16(const uint8_t *p) {
+	return (uint16_t)(p[0] | (p[1] << 8));
+}
+
+static uint32_t get_u32(const uint8_t *p) {
+	return (uint32_t)get_u16(p) | ((uint32_t)get_u16(p + 2) << 16);
+}
+
+bool proto_parse(const uint8_t *data, size_t len, struct proto_packet *out) {
+	uint16_t payload_len;
+
+	if (len < PROTO_HEADER_LEN + PROTO_CRC_LEN) {
+		return false;
+	}
+	if (memcmp(data, PROTO_MAGIC, 4) != 0 || data[4] != PROTO_VERSION) {
+		return false;
+	}
+	payload_len = get_u16(data + 10);
+	if (payload_len > PROTO_PART_MAX ||
+	    len < (size_t)PROTO_HEADER_LEN + payload_len + PROTO_CRC_LEN) {
+		return false;
+	}
+	if (data[8] == 0 || data[7] >= data[8]) {	/* part / part_count */
+		return false;
+	}
+	if (proto_crc32(data, PROTO_HEADER_LEN + payload_len) !=
+	    get_u32(data + PROTO_HEADER_LEN + payload_len)) {
+		return false;
+	}
+
+	out->type = data[5];
+	out->subpage = data[6];
+	out->part = data[7];
+	out->part_count = data[8];
+	out->payload_len = payload_len;
+	out->seq = get_u32(data + 12);
+	out->timestamp_us = (uint64_t)get_u32(data + 16) |
+	                    ((uint64_t)get_u32(data + 20) << 32);
+	out->payload = data + PROTO_HEADER_LEN;
+	return true;
+}
+
 size_t proto_build(uint8_t *out, enum proto_type type, uint8_t subpage,
                    uint8_t part, uint8_t part_count, uint32_t seq,
                    uint64_t timestamp_us, const void *payload, size_t len) {

@@ -10,7 +10,7 @@ Prints one line per second, then a summary with PASS/FAIL:
   - EEPROM is received regularly and is always the same
 
 Usage:
-    host/.venv/Scripts/python host/stream_stats.py [--port COM9] [--duration 60]
+    host/.venv/Scripts/python host/stream_stats.py [--source usb|udp] [--duration 60]
         [--save captures/stream.bin]
 """
 
@@ -21,17 +21,25 @@ import time
 from mlxstream.blocks import BlockAssembler
 from mlxstream.protocol import (TYPE_EEPROM, TYPE_STATUS, TYPE_SUBPAGE,
                                 StreamParser)
-from mlxstream.sources import SerialSource
+from mlxstream.sources import open_source
 
 # Subpage period measured in M3 at the 32 Hz setting (docs/m3_timing.md).
 M3_PERIOD_US = 31974
 RATE_TOLERANCE = 0.01
 
 
+# A missed subpage right after connecting is expected with UDP: the board's
+# first packet has to wait for an ARP reply (see docs/m7_udp.md), which can
+# take tens of ms. Errors in this window are counted separately.
+CONNECT_WINDOW_S = 2.0
+
+
 class Checker:
     def __init__(self):
         self.subpages = 0
         self.alternation_errors = 0
+        self.alternation_errors_at_connect = 0
+        self._t_first = None
         self.last_subpage = None
         self.first_ts = self.last_ts = None
         self.eeprom_count = 0
@@ -39,12 +47,22 @@ class Checker:
         self.eeprom_mismatch = 0
         self.status_first = None
         self.status_last = None
+        self.delays = []        # host arrival time minus device timestamp
 
-    def on_block(self, b):
+    def on_block(self, b, arrival):
         if b.type == TYPE_SUBPAGE:
             self.subpages += 1
+            # The two clocks have different starting points, so only the
+            # variation of this difference is meaningful: it is the
+            # transport delay jitter.
+            self.delays.append(arrival - b.timestamp_us / 1e6)
+            if self._t_first is None:
+                self._t_first = arrival
             if self.last_subpage is not None and b.subpage == self.last_subpage:
-                self.alternation_errors += 1
+                if arrival - self._t_first <= CONNECT_WINDOW_S:
+                    self.alternation_errors_at_connect += 1
+                else:
+                    self.alternation_errors += 1
             self.last_subpage = b.subpage
             if self.first_ts is None:
                 self.first_ts = b.timestamp_us
@@ -70,12 +88,13 @@ class Checker:
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--port", help="COM port (default: find by VID/PID)")
+    ap.add_argument("--source", default="usb",
+                    help="usb, usb:COM9, udp, udp:192.168.1.200 (default: usb)")
     ap.add_argument("--duration", type=float, default=60.0)
     ap.add_argument("--save", help="also save the raw byte stream to this file")
     args = ap.parse_args()
 
-    src = SerialSource(args.port)
+    src = open_source(args.source)
     save = open(args.save, "wb") if args.save else None
     parser, asm, chk = StreamParser(), BlockAssembler(), Checker()
     print(f"reading {src.name} for {args.duration:.0f} s")
@@ -97,7 +116,7 @@ def main():
                     first_packet_skip = parser.skipped_bytes
                 block = asm.add(pkt)
                 if block:
-                    chk.on_block(block)
+                    chk.on_block(block, time.perf_counter())
             if now >= next_report:
                 st = chk.status_last or {}
                 print(f"{now - t0:5.1f} s | {chk.subpages - last_sub:3d} subpages/s | "
@@ -127,8 +146,9 @@ def main():
         ("SUBPAGE seq gaps = 0", asm.seq_gaps.get(TYPE_SUBPAGE, 0) == 0,
          asm.seq_gaps.get(TYPE_SUBPAGE, 0)),
         ("incomplete blocks = 0", sum(asm.incomplete.values()) == 0, dict(asm.incomplete)),
-        ("subpage 0/1 alternation errors = 0", chk.alternation_errors == 0,
-         chk.alternation_errors),
+        (f"subpage 0/1 alternation errors after the first {CONNECT_WINDOW_S:.0f} s = 0",
+         chk.alternation_errors == 0,
+         f"{chk.alternation_errors} (at connect: {chk.alternation_errors_at_connect})"),
         (f"device subpage rate within {RATE_TOLERANCE:.0%} of M3 ({m3_rate:.2f} Hz)",
          abs(dev_rate - m3_rate) / m3_rate <= RATE_TOLERANCE, f"{dev_rate:.3f} Hz"),
         ("PC receive rate matches device rate (nothing lost)",
@@ -142,6 +162,13 @@ def main():
     ]
 
     print()
+    if chk.delays:
+        d = sorted(chk.delays)
+        base = d[0]
+        mid = d[len(d) // 2] - base
+        p99 = d[int(len(d) * 0.99)] - base
+        print(f"transport delay jitter (vs fastest packet): median {mid * 1e3:.2f} ms, "
+              f"99% {p99 * 1e3:.2f} ms, max {(d[-1] - base) * 1e3:.2f} ms")
     print(f"elapsed {elapsed:.1f} s, packets {parser.packets}, subpages {chk.subpages}, "
           f"blocks {dict(asm.blocks)}")
     print(f"bytes skipped: {parser.skipped_bytes} (before first packet: {first_packet_skip}), "

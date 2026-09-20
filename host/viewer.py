@@ -5,8 +5,8 @@ code (method A). Data comes from the board over USB, or from a saved
 stream for work without the board.
 
 Usage:
-    host/.venv/Scripts/python host/viewer.py                 # live, find COM port
-    host/.venv/Scripts/python host/viewer.py --port COM9
+    host/.venv/Scripts/python host/viewer.py                 # live over USB
+    host/.venv/Scripts/python host/viewer.py --source udp    # live over Ethernet
     host/.venv/Scripts/python host/viewer.py --replay captures/m4_stream_65s.bin
 """
 
@@ -93,9 +93,10 @@ class Card(QtWidgets.QFrame):
 
 
 class Viewer(QtWidgets.QMainWindow):
-    def __init__(self, port, replay, calc="melexis"):
+    def __init__(self, source, replay, calc="melexis"):
         super().__init__()
-        self.setWindowTitle("MLX90640 Thermal Viewer" + ("  [replay]" if replay else "")
+        self.setWindowTitle("MLX90640 Thermal Viewer"
+                            + (f"  [{'replay' if replay else source}]")
                             + ("  [calc: python]" if calc == "python" else ""))
         self.resize(1280, 800)
 
@@ -110,7 +111,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         # --- Worker thread ---------------------------------------------------
         self._thread = QtCore.QThread(self)
-        self._worker = StreamWorker(port=port, replay=replay, calc=calc)
+        self._worker = StreamWorker(source=source, replay=replay, calc=calc)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.frame_ready.connect(self._on_frame)
@@ -363,7 +364,8 @@ class Viewer(QtWidgets.QMainWindow):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--port", help="COM port (default: find by VID/PID)")
+    ap.add_argument("--source", default="usb",
+                    help="usb, usb:COM9, udp, udp:192.168.1.200 (default: usb)")
     ap.add_argument("--replay", help="play a saved stream instead of the board")
     ap.add_argument("--snapshot", help="save a PNG of the window after --after seconds, then quit")
     ap.add_argument("--after", type=float, default=5.0)
@@ -385,7 +387,7 @@ def main():
     pal.setColor(QtGui.QPalette.Highlight, QtGui.QColor(ACCENT))
     app.setPalette(pal)
 
-    w = Viewer(args.port, args.replay, args.calc)
+    w = Viewer(args.source, args.replay, args.calc)
     w.avg_chk.setChecked(args.avg)
     w.smooth_chk.setChecked(args.smooth)
     w.show()

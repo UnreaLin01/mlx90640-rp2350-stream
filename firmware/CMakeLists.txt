@@ -61,7 +61,8 @@ target_compile_definitions(wiznet PUBLIC
 	DEVICE_BOARD_NAME=W6300_EVB_PICO2
 	_WIZCHIP_QSPI_MODE_=QSPI_QUAD_MODE
 )
-target_include_directories(wiznet PUBLIC
+# SYSTEM: do not report warnings from WIZnet's headers in our files.
+target_include_directories(wiznet SYSTEM PUBLIC
 	${WIZ_IO}/Ethernet
 	${WIZ_IO}/Ethernet/W6300
 	${WIZ_PORT}
@@ -116,8 +117,22 @@ add_library(stream_usb STATIC
 target_compile_options(stream_usb PRIVATE -Wall -Wextra)
 target_link_libraries(stream_usb PUBLIC project_common sensor tinyusb_device pico_unique_id)
 
-add_firmware(mlx_thermal src/main.c)		# main firmware (32 Hz)
+# Same protocol over UDP (M7). Only the transport differs; main.c is shared.
+add_library(stream_udp STATIC
+	src/protocol.c
+	src/stream.c
+	src/transport_udp.c
+	src/net.c
+)
+target_compile_options(stream_udp PRIVATE -Wall -Wextra)
+target_link_libraries(stream_udp PUBLIC project_common sensor wiznet pico_unique_id)
+
+add_firmware(mlx_thermal src/main.c)		# main firmware, USB (32 Hz)
 target_link_libraries(mlx_thermal PRIVATE sensor stream_usb)
+
+# Same firmware streaming over Ethernet instead of USB (M7)
+add_firmware(mlx_thermal_udp src/main.c)
+target_link_libraries(mlx_thermal_udp PRIVATE sensor stream_udp)
 
 # Same firmware at other subpage rates, for timing comparison (M3)
 foreach(rate 16 64)

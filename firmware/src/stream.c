@@ -60,3 +60,16 @@ void stream_send_status(const struct proto_status *st, uint64_t t_us) {
 uint32_t stream_dropped(void) {
 	return dropped;
 }
+
+static volatile bool eeprom_requested;
+
+void stream_request_eeprom(void) {
+	eeprom_requested = true;
+}
+
+bool stream_take_eeprom_request(void) {
+	bool was = eeprom_requested;
+
+	eeprom_requested = false;
+	return was;
+}

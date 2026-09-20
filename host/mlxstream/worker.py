@@ -18,7 +18,7 @@ from .protocol import TYPE_EEPROM, TYPE_STATUS, TYPE_SUBPAGE
 # "python" = numpy port (method B). Both give the same result.
 CALC_CLASSES = {"melexis": MelexisCalc, "python": PythonCalc}
 from .receiver import Receiver
-from .sources import FileSource, SerialSource
+from .sources import FileSource, open_source
 
 
 @dataclass
@@ -36,9 +36,9 @@ class StreamWorker(QtCore.QObject):
     frame_ready = QtCore.Signal(object)
     message = QtCore.Signal(str)
 
-    def __init__(self, port=None, replay=None, emissivity=0.95, calc="melexis"):
+    def __init__(self, source="usb", replay=None, emissivity=0.95, calc="melexis"):
         super().__init__()
-        self._port = port
+        self._source = source
         self._replay = replay
         self._calc_class = CALC_CLASSES[calc]
         self._running = True
@@ -50,7 +50,7 @@ class StreamWorker(QtCore.QObject):
     def _open(self):
         if self._replay:
             return FileSource(self._replay)
-        return SerialSource(self._port)
+        return open_source(self._source)
 
     @QtCore.Slot()
     def run(self):

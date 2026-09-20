@@ -95,11 +95,12 @@
 
 ## 目前進度
 
-- [x] M0　- [x] M1　- [x] M2　- [x] M3　- [x] M4　- [x] M5　- [x] M6　- [ ] M7
+- [x] M0　- [x] M1　- [x] M2　- [x] M3　- [x] M4　- [x] M5　- [x] M6　- [x] M7
 
 ## 已知問題（待解決）
 
 - **I2C 1 MHz 上升時間約 220 ns，不符合 Fast-mode Plus 的 120 ns**（模組上拉太弱）。目前實測時序餘裕足夠、長時間測試 0 錯誤，使用者決定暫時接受，之後再改硬體。詳見 `docs/m2_i2c.md`。改硬體後要重跑 `rise_test` 與 `eeprom_soak_1000k`。
+- **UDP 連線瞬間可能漏 1～2 個 subpage**：開發板第一次送封包給某台電腦時要等 ARP 回應（實測約 78 ms），WIZnet 的 `sendto` 會阻塞，卡住讀取迴圈。之後不再發生（ARP 已快取）。要完全避免需把網路處理移到第二顆核心；若日後加 mDNS／NetBIOS 等需持續回應的服務，建議一併處理。詳見 `docs/m7_udp.md`。
 - **64 Hz subpage rate 做不到**：一個 subpage 讀取需 17.5 ms，64 Hz 週期只有 17.55 ms，會漏讀並讀到更新中的資料。受上面的 I2C 上升時間限制（SCL 實際 893 kHz）。32 Hz 讀取佔週期 55%，也高於原本「< 50%」的目標。可能解法：改善 I2C 上拉（預估 32 Hz 約 49%，64 Hz 仍不夠）、改用 interleaved 模式只讀當前 subpage 的 12 列（偏離 Melexis 預設 chess 模式，需評估影像品質）。詳見 `docs/m3_timing.md`。`mlx_thermal_64hz`／`mlx_thermal_16hz` 為比較用的建置目標。
 
 ## 必須停下來找使用者的情況

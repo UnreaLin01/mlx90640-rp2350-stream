@@ -7,6 +7,7 @@
  * PROTO_PART_MAX bytes. See docs/protocol.md.
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "protocol.h"
@@ -23,5 +24,10 @@ void stream_send_status(const struct proto_status *st, uint64_t t_us);
 
 /* Packets dropped because the transport could not take them. */
 uint32_t stream_dropped(void);
+
+/* The PC asked for the EEPROM (REQUEST packet). Set by the transport,
+ * cleared when the main loop has sent it. */
+void stream_request_eeprom(void);
+bool stream_take_eeprom_request(void);
 
 #endif

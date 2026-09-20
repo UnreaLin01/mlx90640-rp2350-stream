@@ -3,6 +3,13 @@
 Every source has read() -> bytes (may be empty) and close(). The parser,
 statistics and display code only use this, so switching from USB to
 Ethernet (M7) only means picking another source.
+
+Tools take a source as text (open_source):
+    usb            the board's COM port, found by VID/PID
+    usb:COM9       a specific COM port
+    udp            the board over Ethernet (default address)
+    udp:1.2.3.4    the board at that address
+    file:path      a stream saved earlier (stream_stats.py --save)
 """
 
 import serial
@@ -62,3 +69,16 @@ class SerialSource:
 
     def close(self):
         self._ser.close()
+
+
+def open_source(spec):
+    """Open a source from text like 'usb', 'udp:192.168.1.200', 'file:x.bin'."""
+    kind, _, arg = spec.partition(":")
+    if kind == "usb":
+        return SerialSource(arg or None)
+    if kind == "udp":
+        from .udp_source import UdpSource    # imported late: needs no pyserial
+        return UdpSource(arg) if arg else UdpSource()
+    if kind == "file":
+        return FileSource(arg)
+    raise ValueError(f"unknown source '{spec}' (use usb, udp or file:path)")

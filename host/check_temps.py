@@ -21,7 +21,7 @@ import numpy as np
 from mlxstream.protocol import TYPE_EEPROM, TYPE_SUBPAGE
 from mlxstream.worker import CALC_CLASSES
 from mlxstream.receiver import Receiver
-from mlxstream.sources import FileSource, SerialSource
+from mlxstream.sources import FileSource, open_source
 
 ROOM_RANGE = (15.0, 40.0)
 TA_RANGE = (15.0, 60.0)
@@ -30,13 +30,13 @@ TA_RANGE = (15.0, 60.0)
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--file", help="saved stream (stream_stats.py --save)")
-    ap.add_argument("--port", help="COM port (default: find by VID/PID)")
+    ap.add_argument("--source", default="usb", help="usb, usb:COM9, udp, udp:<ip>")
     ap.add_argument("--duration", type=float, default=20.0, help="seconds, live mode only")
     ap.add_argument("--calc", choices=list(CALC_CLASSES), default="melexis",
                     help="Melexis C code (A) or numpy port (B)")
     args = ap.parse_args()
 
-    src = FileSource(args.file) if args.file else SerialSource(args.port)
+    src = FileSource(args.file) if args.file else open_source(args.source)
     rx = Receiver(src)
     calc = None
     seen = set()

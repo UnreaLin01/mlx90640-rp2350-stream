@@ -90,10 +90,11 @@ int main(void) {
 
 	log_init();
 	pins_init();
-	LOG("M4 boot, sys_clk=%u Hz, rate code %d\r\n",
+	LOG("boot, sys_clk=%u Hz, rate code %d\r\n",
 	    (unsigned)clock_get_hz(clk_sys), SENSOR_RATE);
 
-	/* USB first, so the PC sees the port while the sensor starts up. */
+	/* Transport first, so the PC can find the board while the sensor
+	 * starts up (USB: enumerate; Ethernet: link up and listen). */
 	transport_init();
 	stream_init();
 	i2c_bus_set_idle_hook(transport_poll);
@@ -153,10 +154,11 @@ int main(void) {
 		}
 		last_ready = t_ready;
 
-		/* --- EEPROM: right after the PC connects, then every 2 s -------- */
+		/* --- EEPROM: on connect, when asked for, then every 2 s -------- */
 		now = time_us_64();
 		connected = transport_connected();
-		if (connected && (!was_connected || now - last_eeprom >= EEPROM_PERIOD_US)) {
+		if (connected && (!was_connected || stream_take_eeprom_request()
+		                  || now - last_eeprom >= EEPROM_PERIOD_US)) {
 			stream_send_eeprom(ee_data, now);
 			last_eeprom = now;
 		}
@@ -167,11 +169,11 @@ int main(void) {
 			totals.tx_dropped = stream_dropped();
 			totals.read_us_max = st.read_max;
 			stream_send_status(&totals, now);
-			LOG("%u subpages/s | read %u..%u us | gap %u..%u us | usb %s | "
+			LOG("%u subpages/s | read %u..%u us | gap %u..%u us | receiver %s | "
 			    "total %u, read_err %u order_err %u wait_err %u dropped %u\r\n",
 			    (unsigned)st.subpages, (unsigned)st.read_min, (unsigned)st.read_max,
 			    (unsigned)st.gap_min, (unsigned)st.gap_max,
-			    connected ? "open" : "closed", (unsigned)totals.subpages,
+			    connected ? "connected" : "none", (unsigned)totals.subpages,
 			    (unsigned)totals.read_errors, (unsigned)totals.order_errors,
 			    (unsigned)totals.wait_errors, (unsigned)totals.tx_dropped);
 			gpio_xor_mask(1u << PIN_LED);
