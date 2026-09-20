@@ -4,7 +4,7 @@ captures/
 # RTT logs
 logs/
 
-# Build output
+# Build output (CMake is configured from the project root)
 build/
 firmware/build/
 

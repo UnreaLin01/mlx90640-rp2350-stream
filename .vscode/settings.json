@@ -1,3 +1,14 @@
 {
-    "cmake.sourceDirectory": "C:/Users/User/Desktop/Desktop/LabBEST/Projects/Pi_Pico/pico__mlx_thermal/firmware"
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.generator": "Ninja",
+    "cmake.configureOnOpen": false,
+    "cmake.automaticReconfigure": false,
+    "raspberry-pi-pico.cmakeAutoConfigure": true,
+    "raspberry-pi-pico.useCmakeTools": false,
+    "raspberry-pi-pico.cmakePath": "${userHome}/.pico-sdk/cmake/v4.3.4/bin/cmake.exe",
+    "raspberry-pi-pico.ninjaPath": "${userHome}/.pico-sdk/ninja/v1.13.2/ninja.exe",
+    "files.associations": {
+        "*.pio": "c"
+    }
 }

@@ -16,6 +16,9 @@ $JLinkSpeed      = 4000
 
 $ProjectRoot     = Split-Path $PSScriptRoot -Parent
 $FirmwareDir     = Join-Path $ProjectRoot 'firmware'
-$BuildDir        = Join-Path $FirmwareDir 'build'
-$FirmwareElf     = Join-Path $BuildDir 'mlx_thermal.elf'
+# CMake is configured from the project root (see CMakeLists.txt there), so
+# the firmware binaries end up in build/firmware/.
+$BuildDir        = Join-Path $ProjectRoot 'build'
+$FirmwareOutDir  = Join-Path $BuildDir 'firmware'
+$FirmwareElf     = Join-Path $FirmwareOutDir 'mlx_thermal.elf'
 $LogDir          = Join-Path $ProjectRoot 'logs'

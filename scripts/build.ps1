@@ -8,7 +8,7 @@ if ($Clean -and (Test-Path $BuildDir)) {
 }
 
 if (-not (Test-Path (Join-Path $BuildDir 'build.ninja'))) {
-	& $PicoCmake -S $FirmwareDir -B $BuildDir -G Ninja `
+	& $PicoCmake -S $ProjectRoot -B $BuildDir -G Ninja `
 		"-DCMAKE_MAKE_PROGRAM=$PicoNinja" `
 		"-DPICO_SDK_PATH=$PicoSdkPath" `
 		"-DPICO_TOOLCHAIN_PATH=$PicoToolchain" `

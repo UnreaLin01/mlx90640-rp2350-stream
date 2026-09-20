@@ -1,13 +1,5 @@
-cmake_minimum_required(VERSION 3.13)
-
-set(PICO_BOARD pico2 CACHE STRING "Board type")
-
-include(pico_sdk_import.cmake)
-
-project(mlx_thermal C CXX ASM)
-set(CMAKE_C_STANDARD 11)
-
-pico_sdk_init()
+# Firmware targets. The SDK setup is in the top-level CMakeLists.txt, which
+# adds this directory; do not configure this directory on its own.
 
 # ---------------------------------------------------------------------------
 # SEGGER RTT (third-party code, kept unmodified)
