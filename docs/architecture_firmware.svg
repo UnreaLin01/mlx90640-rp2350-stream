@@ -1,153 +1,149 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 940" width="1200" height="940" font-family="Segoe UI, Microsoft JhengHei, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" font-family="Segoe UI, Arial, sans-serif">
   <defs>
     <marker id="arw" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
       <path d="M0,0 L10,4 L0,8 z" fill="#5b6b7f"/>
     </marker>
     <style>
-      .h1    { font-size: 26px; font-weight: 650; fill: #1d2733; }
-      .h2    { font-size: 14px; fill: #6b7787; }
-      .lane  { font-size: 15px; font-weight: 650; }
-      .name  { font-size: 15px; font-weight: 600; fill: #1d2733; }
-      .t     { font-size: 12.5px; fill: #5b6b7f; }
-      .lbl   { font-size: 12.5px; font-weight: 600; fill: #1d4e79; }
+      .h1   { font-size: 26px; font-weight: 650; fill: #1d2733; }
+      .h2   { font-size: 14px; fill: #6b7787; }
+      .lane { font-size: 15px; font-weight: 650; }
+      .name { font-size: 15px; font-weight: 600; fill: #1d2733; }
+      .t    { font-size: 12.5px; fill: #5b6b7f; }
+      .lbl  { font-size: 12.5px; font-weight: 600; fill: #1d4e79; }
     </style>
   </defs>
-  <rect width="1200" height="940" fill="#ffffff"/>
+  <rect width="1200" height="900" fill="#ffffff"/>
 
-  <text class="h1" x="60" y="52">韌體執行架構</text>
-  <text class="h2" x="60" y="78">資料流與核心分工。核心 0 專心讀感測器，網路的等待都交給核心 1。</text>
+  <text class="h1" x="50" y="50">Firmware architecture</text>
+  <text class="h2" x="50" y="76">Data flow and core split. Core 0 only reads the sensor; all network waiting happens on core 1.</text>
 
-  <!-- ========== Lane: core 0 ========== -->
-  <rect x="60" y="104" width="1080" height="216" rx="14" fill="#eef4fb" stroke="#c7dcf0"/>
-  <rect x="60" y="104" width="1080" height="32" rx="14" fill="#d7e8f7"/>
-  <rect x="60" y="120" width="1080" height="16" fill="#d7e8f7"/>
-  <text class="lane" x="80" y="126" fill="#1d4e79">核心 0　感測器迴圈</text>
-  <text class="t" x="1120" y="126" text-anchor="end" fill="#1d4e79">每 32 ms 一個 subpage，讀取佔用 17.5 ms</text>
+  <!-- ===== Lane: core 0 ===== -->
+  <rect x="50" y="100" width="1100" height="192" rx="14" fill="#eef4fb" stroke="#c7dcf0"/>
+  <rect x="50" y="100" width="1100" height="34" rx="14" fill="#d7e8f7"/>
+  <rect x="50" y="118" width="1100" height="16" fill="#d7e8f7"/>
+  <text class="lane" x="72" y="122" fill="#1d4e79">Core 0 — sensor loop</text>
+  <text class="t" x="1128" y="122" text-anchor="end" fill="#1d4e79">One subpage every 32 ms, 17.5 ms spent reading</text>
 
-  <rect x="80" y="156" width="190" height="104" rx="10" fill="#ffffff" stroke="#9db4c9"/>
-  <text class="name" x="175" y="184" text-anchor="middle">MLX90640</text>
-  <text class="t" x="175" y="208" text-anchor="middle">32 × 24 像素</text>
-  <text class="t" x="175" y="228" text-anchor="middle">每秒 32 個 subpage</text>
+  <rect x="78" y="152" width="188" height="110" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="name" x="172" y="180" text-anchor="middle">MLX90640</text>
+  <text class="t" x="172" y="206" text-anchor="middle">32 x 24 pixels</text>
+  <text class="t" x="172" y="228" text-anchor="middle">32 subpages per second</text>
 
-  <rect x="295" y="156" width="190" height="104" rx="10" fill="#ffffff" stroke="#9db4c9"/>
-  <text class="name" x="390" y="184" text-anchor="middle">i2c_bus.c</text>
-  <text class="t" x="390" y="208" text-anchor="middle">I2C 1 MHz．GP4 GP5</text>
-  <text class="t" x="390" y="228" text-anchor="middle">兩條 DMA 通道</text>
-  <text class="t" x="390" y="248" text-anchor="middle">位元組之間無空檔</text>
+  <rect x="292" y="152" width="188" height="110" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="name" x="386" y="180" text-anchor="middle">i2c_bus.c</text>
+  <text class="t" x="386" y="206" text-anchor="middle">I2C at 1 MHz on GP4 GP5</text>
+  <text class="t" x="386" y="228" text-anchor="middle">Two DMA channels</text>
+  <text class="t" x="386" y="250" text-anchor="middle">No gap between bytes</text>
 
-  <rect x="510" y="156" width="190" height="104" rx="10" fill="#ffffff" stroke="#9db4c9"/>
-  <text class="name" x="605" y="184" text-anchor="middle">sensor.c</text>
-  <text class="t" x="605" y="208" text-anchor="middle">Melexis 官方讀法</text>
-  <text class="t" x="605" y="228" text-anchor="middle">等待新資料旗標</text>
-  <text class="t" x="605" y="248" text-anchor="middle">832 words 一次讀完</text>
+  <rect x="506" y="152" width="188" height="110" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="name" x="600" y="180" text-anchor="middle">sensor.c</text>
+  <text class="t" x="600" y="206" text-anchor="middle">Melexis reference flow</text>
+  <text class="t" x="600" y="228" text-anchor="middle">Waits for data ready flag</text>
+  <text class="t" x="600" y="250" text-anchor="middle">Reads 832 words at once</text>
 
-  <rect x="725" y="156" width="190" height="104" rx="10" fill="#ffffff" stroke="#9db4c9"/>
-  <text class="name" x="820" y="184" text-anchor="middle">stream.c</text>
-  <text class="t" x="820" y="208" text-anchor="middle">加標頭與 CRC-32</text>
-  <text class="t" x="820" y="228" text-anchor="middle">1666 bytes 切成</text>
-  <text class="t" x="820" y="248" text-anchor="middle">兩個封包</text>
+  <rect x="720" y="152" width="188" height="110" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="name" x="814" y="180" text-anchor="middle">stream.c</text>
+  <text class="t" x="814" y="206" text-anchor="middle">Adds header and CRC-32</text>
+  <text class="t" x="814" y="228" text-anchor="middle">Splits 1666 bytes into</text>
+  <text class="t" x="814" y="250" text-anchor="middle">two packets</text>
 
-  <rect x="940" y="156" width="190" height="104" rx="10" fill="#fff6ea" stroke="#e8b877"/>
-  <text class="name" x="1035" y="184" text-anchor="middle">transport_send</text>
-  <text class="t" x="1035" y="208" text-anchor="middle">立刻返回，不等待</text>
-  <text class="t" x="1035" y="228" text-anchor="middle">塞不下就整包丟棄</text>
-  <text class="t" x="1035" y="248" text-anchor="middle">並且計數</text>
+  <rect x="934" y="152" width="188" height="110" rx="10" fill="#fff6ea" stroke="#e8b877"/>
+  <text class="name" x="1028" y="180" text-anchor="middle">transport_send</text>
+  <text class="t" x="1028" y="206" text-anchor="middle">Returns immediately</text>
+  <text class="t" x="1028" y="228" text-anchor="middle">Drops the whole packet</text>
+  <text class="t" x="1028" y="250" text-anchor="middle">if the queue is full</text>
 
-  <text class="t" x="80" y="292">計時標記給 Logic 8 量測：GP6 在讀取期間維持高電位，GP7 每收到一個新 subpage 翻轉一次</text>
+  <path d="M268,206 H286" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M482,206 H500" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M696,206 H714" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M910,206 H928" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
 
-  <path d="M270,208 H289" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M485,208 H504" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M700,208 H719" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M915,208 H934" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <!-- ===== Transport cards ===== -->
+  <path d="M1028,262 V322 H310 V350" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M1028,322 H890 V350" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
 
-  <!-- ========== Lane: transports ========== -->
-  <text class="lane" x="60" y="358" fill="#1d2733">傳輸層　同一組介面兩種實作，編譯時擇一，封包格式完全相同</text>
+  <rect x="50" y="356" width="520" height="225" rx="14" fill="#f7f9fc" stroke="#cfd8e3"/>
+  <rect x="50" y="356" width="520" height="32" rx="14" fill="#e6ebf2"/>
+  <rect x="50" y="372" width="520" height="16" fill="#e6ebf2"/>
+  <text class="lane" x="72" y="378" fill="#3d4f63">USB mode — mlx_thermal — single core</text>
 
-  <!-- USB card -->
-  <rect x="60" y="376" width="500" height="232" rx="14" fill="#f7f9fc" stroke="#cfd8e3"/>
-  <rect x="60" y="376" width="500" height="30" rx="14" fill="#e6ebf2"/>
-  <rect x="60" y="391" width="500" height="15" fill="#e6ebf2"/>
-  <text class="lane" x="80" y="397" fill="#3d4f63">USB 模式　韌體 mlx_thermal　單核心</text>
+  <rect x="74" y="406" width="472" height="76" rx="10" fill="#ffffff" stroke="#9db4c9"/>
+  <text class="name" x="310" y="434" text-anchor="middle">transport_usb.c — TinyUSB CDC</text>
+  <text class="t" x="310" y="458" text-anchor="middle">Writes to the FIFO and returns. Image data only, never logs.</text>
 
-  <rect x="84" y="428" width="452" height="72" rx="10" fill="#ffffff" stroke="#9db4c9"/>
-  <text class="name" x="310" y="456" text-anchor="middle">transport_usb.c　TinyUSB CDC</text>
-  <text class="t" x="310" y="480" text-anchor="middle">資料寫進 FIFO 就返回，USB 通道只傳影像資料</text>
+  <rect x="74" y="498" width="472" height="76" rx="10" fill="#ffffff" stroke="#cfd8e3"/>
+  <text class="name" x="310" y="526" text-anchor="middle">USB background work</text>
+  <text class="t" x="310" y="550" text-anchor="middle">Runs while waiting for the sensor and DMA. Costs no extra time.</text>
 
-  <rect x="84" y="516" width="452" height="72" rx="10" fill="#ffffff" stroke="#cfd8e3"/>
-  <text class="name" x="310" y="544" text-anchor="middle">USB 背景工作</text>
-  <text class="t" x="310" y="568" text-anchor="middle">在等待感測器與等待 DMA 的空檔執行，不另外佔時間</text>
+  <rect x="630" y="356" width="520" height="225" rx="14" fill="#f2faf4" stroke="#bfe3c9"/>
+  <rect x="630" y="356" width="520" height="32" rx="14" fill="#daf0e1"/>
+  <rect x="630" y="372" width="520" height="16" fill="#daf0e1"/>
+  <text class="lane" x="652" y="378" fill="#1f6b3a">Ethernet mode — mlx_thermal_udp — dual core</text>
 
-  <!-- Ethernet card -->
-  <rect x="600" y="376" width="540" height="232" rx="14" fill="#f2faf4" stroke="#bfe3c9"/>
-  <rect x="600" y="376" width="540" height="30" rx="14" fill="#daf0e1"/>
-  <rect x="600" y="391" width="540" height="15" fill="#daf0e1"/>
-  <text class="lane" x="620" y="397" fill="#1f6b3a">乙太網路模式　韌體 mlx_thermal_udp　雙核心</text>
+  <rect x="654" y="406" width="226" height="168" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
+  <text class="name" x="767" y="434" text-anchor="middle">queue_t ring</text>
+  <text class="t" x="767" y="458" text-anchor="middle">16 slots of 1054 bytes</text>
+  <text class="t" x="767" y="478" text-anchor="middle">Guarded by a hardware</text>
+  <text class="t" x="767" y="498" text-anchor="middle">spin lock</text>
+  <text class="t" x="767" y="524" text-anchor="middle">Core 0 pushes</text>
+  <text class="t" x="767" y="544" text-anchor="middle">Core 1 pops</text>
+  <text class="t" x="767" y="564" text-anchor="middle">Both may run at once</text>
 
-  <rect x="624" y="428" width="228" height="160" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
-  <text class="name" x="738" y="456" text-anchor="middle">queue_t 佇列</text>
-  <text class="t" x="738" y="482" text-anchor="middle">16 格，每格 1054 bytes</text>
-  <text class="t" x="738" y="504" text-anchor="middle">硬體 spin lock 保護</text>
-  <text class="t" x="738" y="526" text-anchor="middle">核心 0 放入</text>
-  <text class="t" x="738" y="548" text-anchor="middle">核心 1 取出</text>
-  <text class="t" x="738" y="570" text-anchor="middle">兩邊可同時存取</text>
+  <rect x="900" y="406" width="226" height="168" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
+  <text class="name" x="1013" y="434" text-anchor="middle">Core 1 — net_task</text>
+  <text class="t" x="1013" y="458" text-anchor="middle">W6300 over QSPI</text>
+  <text class="t" x="1013" y="478" text-anchor="middle">Driven by PIO and DMA</text>
+  <text class="t" x="1013" y="498" text-anchor="middle">DHCP first, then static IP</text>
+  <text class="t" x="1013" y="524" text-anchor="middle">Learns the PC address</text>
+  <text class="t" x="1013" y="544" text-anchor="middle">from a REQUEST packet</text>
+  <text class="t" x="1013" y="564" text-anchor="middle">Sends UDP, may wait on ARP</text>
 
-  <rect x="888" y="428" width="228" height="160" rx="10" fill="#ffffff" stroke="#8fc2a1"/>
-  <text class="name" x="1002" y="456" text-anchor="middle">核心 1　net_task</text>
-  <text class="t" x="1002" y="482" text-anchor="middle">W6300 走 QSPI</text>
-  <text class="t" x="1002" y="504" text-anchor="middle">由 PIO 與 DMA 驅動</text>
-  <text class="t" x="1002" y="526" text-anchor="middle">先試 DHCP 再用固定 IP</text>
-  <text class="t" x="1002" y="548" text-anchor="middle">收 REQUEST 學電腦位址</text>
-  <text class="t" x="1002" y="570" text-anchor="middle">送出 UDP，可能等 ARP</text>
+  <path d="M884,490 H896" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
 
-  <path d="M852,508 H882" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <!-- ===== Why two cores ===== -->
+  <rect x="230" y="600" width="740" height="82" rx="10" fill="#fff6ea" stroke="#e8b877"/>
+  <text class="name" x="254" y="626">Why the network gets its own core</text>
+  <text class="t" x="254" y="650">Network calls block: waiting for the link, about 78 ms for an ARP reply, or for a DHCP server.</text>
+  <text class="t" x="254" y="670">Core 0 keeps reading the sensor and never waits on any of that.</text>
 
-  <path d="M1035,260 V336 H520 V422" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M1035,260 V336 H738 V422" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M110,581 V704" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <text class="lbl" x="122" y="648">USB CDC</text>
+  <path d="M1090,581 V704" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <text class="lbl" x="1078" y="648" text-anchor="end">UDP packets</text>
 
-  <!-- why two cores -->
-  <rect x="210" y="624" width="780" height="72" rx="10" fill="#fff6ea" stroke="#e8b877"/>
-  <text class="name" x="234" y="652">為什麼網路要獨立一顆核心</text>
-  <text class="t" x="234" y="676">網路呼叫會停住，例如等網路線接上、等 ARP 回應約 78 毫秒、等 DHCP 伺服器回應。</text>
-  <text class="t" x="234" y="690" opacity="0">placeholder</text>
+  <!-- ===== Lane: PC ===== -->
+  <rect x="50" y="712" width="1100" height="162" rx="14" fill="#faf7fd" stroke="#d9cbe8"/>
+  <rect x="50" y="712" width="1100" height="30" rx="14" fill="#ece2f5"/>
+  <rect x="50" y="727" width="1100" height="15" fill="#ece2f5"/>
+  <text class="lane" x="72" y="733" fill="#5b3a86">PC side — one program for both modes, only the data source changes</text>
 
-  <!-- ========== Lane: PC ========== -->
-  <rect x="60" y="724" width="1080" height="160" rx="14" fill="#faf7fd" stroke="#d9cbe8"/>
-  <rect x="60" y="724" width="1080" height="30" rx="14" fill="#ece2f5"/>
-  <rect x="60" y="739" width="1080" height="15" fill="#ece2f5"/>
-  <text class="lane" x="80" y="745" fill="#5b3a86">電腦端　兩種模式共用同一套程式，只換資料來源</text>
+  <rect x="78" y="764" width="188" height="88" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
+  <text class="name" x="172" y="792" text-anchor="middle">sources.py</text>
+  <text class="t" x="172" y="816" text-anchor="middle">COM port or UDP</text>
+  <text class="t" x="172" y="836" text-anchor="middle">Finds the board for you</text>
 
-  <rect x="80" y="776" width="190" height="86" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
-  <text class="name" x="175" y="804" text-anchor="middle">sources.py</text>
-  <text class="t" x="175" y="828" text-anchor="middle">COM port 或 UDP</text>
-  <text class="t" x="175" y="848" text-anchor="middle">自動搜尋開發板</text>
+  <rect x="292" y="764" width="188" height="88" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
+  <text class="name" x="386" y="792" text-anchor="middle">protocol.py</text>
+  <text class="t" x="386" y="816" text-anchor="middle">Finds magic, checks CRC</text>
+  <text class="t" x="386" y="836" text-anchor="middle">Resyncs after a glitch</text>
 
-  <rect x="295" y="776" width="190" height="86" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
-  <text class="name" x="390" y="804" text-anchor="middle">protocol.py</text>
-  <text class="t" x="390" y="828" text-anchor="middle">找 magic 驗 CRC</text>
-  <text class="t" x="390" y="848" text-anchor="middle">錯位時重新同步</text>
+  <rect x="506" y="764" width="188" height="88" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
+  <text class="name" x="600" y="792" text-anchor="middle">blocks.py</text>
+  <text class="t" x="600" y="816" text-anchor="middle">Reassembles the parts</text>
+  <text class="t" x="600" y="836" text-anchor="middle">Checks sequence numbers</text>
 
-  <rect x="510" y="776" width="190" height="86" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
-  <text class="name" x="605" y="804" text-anchor="middle">blocks.py</text>
-  <text class="t" x="605" y="828" text-anchor="middle">分段組回區塊</text>
-  <text class="t" x="605" y="848" text-anchor="middle">檢查序號連續</text>
+  <rect x="720" y="764" width="188" height="88" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
+  <text class="name" x="814" y="792" text-anchor="middle">calc_python.py</text>
+  <text class="t" x="814" y="816" text-anchor="middle">Converts to temperature</text>
+  <text class="t" x="814" y="836" text-anchor="middle">numpy implementation</text>
 
-  <rect x="725" y="776" width="190" height="86" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
-  <text class="name" x="820" y="804" text-anchor="middle">calc_python.py</text>
-  <text class="t" x="820" y="828" text-anchor="middle">換算成溫度</text>
-  <text class="t" x="820" y="848" text-anchor="middle">numpy 實作</text>
+  <rect x="934" y="764" width="188" height="88" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
+  <text class="name" x="1028" y="792" text-anchor="middle">viewer.py</text>
+  <text class="t" x="1028" y="816" text-anchor="middle">Live thermal image</text>
+  <text class="t" x="1028" y="836" text-anchor="middle">Stream statistics</text>
 
-  <rect x="940" y="776" width="190" height="86" rx="10" fill="#ffffff" stroke="#bfa8d9"/>
-  <text class="name" x="1035" y="804" text-anchor="middle">viewer.py</text>
-  <text class="t" x="1035" y="828" text-anchor="middle">即時熱影像</text>
-  <text class="t" x="1035" y="848" text-anchor="middle">與串流統計</text>
-
-  <path d="M270,819 H289" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M485,819 H504" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M700,819 H719" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <path d="M915,819 H934" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-
-  <path d="M120,608 V712" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <text class="lbl" x="132" y="666">USB CDC</text>
-  <path d="M1100,608 V712" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
-  <text class="lbl" x="1088" y="666" text-anchor="end">UDP 封包</text>
+  <path d="M268,808 H286" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M482,808 H500" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M696,808 H714" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
+  <path d="M910,808 H928" stroke="#5b6b7f" fill="none" marker-end="url(#arw)"/>
 </svg>

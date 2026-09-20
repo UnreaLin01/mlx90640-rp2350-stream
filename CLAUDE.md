@@ -14,7 +14,7 @@
 |---|---|
 | 開發板 | WIZnet W6300-EVB-Pico2（RP2350A，Cortex-M33 ×2，520 KB SRAM，2 MB Flash） |
 | 乙太網路 | W6300，經 PIO 以 QSPI 連接，**GPIO15～22 保留給 W6300，禁止另作他用** |
-| 感測器 | MLX90640（32×24，I2C，最高 1 MHz Fast-mode Plus） |
+| 感測器 | MLX90640（32×24，I2C，最高 1 MHz Fast-mode Plus），Adafruit 模組，板載上拉 |
 | 除錯器 | SEGGER J-Link EDU，SWD 介面 |
 | 邏輯分析儀 | Saleae Logic 8，透過 Logic 2 MCP server 控制 |
 | 主機 | Windows，PowerShell（pwsh） |
