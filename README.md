@@ -30,6 +30,7 @@
 - [韌體與工具一覽](#韌體與工具一覽)
 - [專案結構](#專案結構)
 - [免責聲明](#免責聲明)
+- [授權](#授權)
 
 ## 你需要準備的東西
 
@@ -220,3 +221,7 @@ captures/ logs/    量測資料與 log，不進 git
 ![開發時使用的硬體](docs/bench_setup.jpg)
 
 照片由左到右是 SEGGER J-Link EDU 與 SWD 轉接板、Adafruit MLX90640 模組、連接紫色網路線的 W6300-EVB-Pico2，以及 Saleae Logic 8。
+
+## 授權
+
+本專案以 [MIT 授權](LICENSE)釋出。`third_party/` 裡的三個函式庫不在此授權範圍內，各自沿用原本的授權，Melexis 的 MLX90640 函式庫是 Apache 2.0，SEGGER RTT 與 WIZnet 驅動則是 BSD 類授權。
