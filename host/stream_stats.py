@@ -4,14 +4,18 @@ Prints one line per second, then a summary with PASS/FAIL:
   - no CRC errors
   - no missing SUBPAGE blocks (seq gaps) and no incomplete blocks
   - subpage numbers alternate 0/1
-  - subpage rate matches the M3 setting (period from docs/m3_timing.md)
+  - subpage rate matches the firmware's rate setting (--rate, default 32)
   - device counters (STATUS) show no new read/order/wait errors and no
     dropped packets during the run
   - EEPROM is received regularly and is always the same
 
 Usage:
     host/.venv/Scripts/python host/stream_stats.py [--source usb|udp] [--duration 60]
-        [--save captures/stream.bin]
+        [--rate 32] [--save captures/stream.bin]
+
+--rate must match SENSOR_RATE in firmware/src/main.c, otherwise the rate
+check fails even though nothing is wrong. It is the only check that
+depends on it.
 """
 
 import argparse
@@ -24,8 +28,21 @@ from mlxstream.protocol import (TYPE_EEPROM, TYPE_STATUS, TYPE_SUBPAGE,
 from mlxstream.sources import open_source
 
 # Subpage period measured in M3 at the 32 Hz setting (docs/m3_timing.md).
+#
+# The sensor's own oscillator runs about 2.3 % slow, so "32 Hz" is really
+# 31.27 Hz. Every rate setting comes from that same oscillator, so the
+# others are scaled from this one measurement. Checked against M3's 16 Hz
+# measurement: 63.753 ms measured, 63.948 ms predicted, 0.3 % apart, well
+# inside the tolerance below.
 M3_PERIOD_US = 31974
+M3_SETTING_HZ = 32
+RATE_SETTINGS_HZ = (0.5, 1, 2, 4, 8, 16, 32, 64)   # what the sensor offers
 RATE_TOLERANCE = 0.01
+
+
+def expected_rate(setting_hz):
+    """Subpage rate the board really produces at this rate setting."""
+    return setting_hz * (1e6 / M3_PERIOD_US) / M3_SETTING_HZ
 
 
 # A missed subpage right after connecting is expected with UDP: the board's
@@ -100,6 +117,10 @@ def main():
     ap.add_argument("--source", default="usb",
                     help="usb, usb:COM9, udp, udp:192.168.1.200 (default: usb)")
     ap.add_argument("--duration", type=float, default=60.0)
+    ap.add_argument("--rate", type=float, default=M3_SETTING_HZ, choices=RATE_SETTINGS_HZ,
+                    metavar="HZ",
+                    help="subpage rate the firmware is built for, SENSOR_RATE in "
+                         "firmware/src/main.c (default 32; one of 0.5 1 2 4 8 16 32 64)")
     ap.add_argument("--save", help="also save the raw byte stream to this file")
     args = ap.parse_args()
 
@@ -144,7 +165,7 @@ def main():
     # --- Summary -----------------------------------------------------------
     host_rate = chk.host_rate()
     dev_rate = chk.device_rate()
-    m3_rate = 1e6 / M3_PERIOD_US
+    want_rate = expected_rate(args.rate)
     s0, s1 = chk.status_first or {}, chk.status_last or {}
     dev_new = {k: s1.get(k, 0) - s0.get(k, 0)
                for k in ("read_errors", "order_errors", "wait_errors", "tx_dropped")}
@@ -160,8 +181,9 @@ def main():
         (f"subpage 0/1 alternation errors after the first {CONNECT_WINDOW_S:.0f} s = 0",
          chk.alternation_errors == 0,
          f"{chk.alternation_errors} (at connect: {chk.alternation_errors_at_connect})"),
-        (f"device subpage rate within {RATE_TOLERANCE:.0%} of M3 ({m3_rate:.2f} Hz)",
-         abs(dev_rate - m3_rate) / m3_rate <= RATE_TOLERANCE, f"{dev_rate:.3f} Hz"),
+        (f"device subpage rate within {RATE_TOLERANCE:.0%} of the {args.rate:g} Hz setting "
+         f"({want_rate:.2f} Hz)",
+         abs(dev_rate - want_rate) / want_rate <= RATE_TOLERANCE, f"{dev_rate:.3f} Hz"),
         ("PC receive rate matches device rate (nothing lost)",
          abs(host_rate - dev_rate) / dev_rate <= RATE_TOLERANCE if dev_rate else False,
          f"{host_rate:.3f} Hz"),

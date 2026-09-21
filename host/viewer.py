@@ -56,20 +56,44 @@ QStatusBar {{ background: {PANEL}; color: {MUTED}; }}
 """
 
 
+def _cubic_weights(n, factor):
+    """Matrix that enlarges a line of n samples to n*factor with bicubic
+    interpolation (Keys kernel, a = -0.5, the usual "bicubic").
+
+    Row i holds the weights of the 4 input samples around output point i,
+    so enlarging is a matrix product. Samples past the edge repeat the edge
+    value, which keeps the border from darkening. Each row sums to 1, so a
+    flat area stays flat.
+    """
+    a = -0.5
+    pos = np.linspace(0, n - 1, n * factor)
+    base = np.floor(pos).astype(int)
+    w = np.zeros((n * factor, n))
+    for k in range(-1, 3):                      # the 4 neighbours
+        d = np.abs(pos - (base + k))
+        wk = np.where(d <= 1, (a + 2) * d**3 - (a + 3) * d**2 + 1,
+                      np.where(d < 2, a * d**3 - 5 * a * d**2 + 8 * a * d - 4 * a, 0.0))
+        idx = np.clip(base + k, 0, n - 1)
+        np.add.at(w, (np.arange(n * factor), idx), wk)
+    return w
+
+
+_weight_cache = {}
+
+
 def upsample(img, factor):
-    """Bilinear enlarge (for a smoother look). The data itself stays 32x24."""
+    """Bicubic enlarge, for a smoother look. The data itself stays 32x24,
+    and the readouts (hottest, coldest, center) use the original pixels.
+
+    Bicubic can overshoot a little at sharp edges, i.e. show a value just
+    above the hottest pixel. That only affects the picture, never a number.
+    """
     rows, cols = img.shape
-    y = np.linspace(0, rows - 1, rows * factor)
-    x = np.linspace(0, cols - 1, cols * factor)
-    y0 = np.floor(y).astype(int)
-    x0 = np.floor(x).astype(int)
-    y1 = np.minimum(y0 + 1, rows - 1)
-    x1 = np.minimum(x0 + 1, cols - 1)
-    wy = (y - y0)[:, None]
-    wx = (x - x0)[None, :]
-    top = img[y0][:, x0] * (1 - wx) + img[y0][:, x1] * wx
-    bot = img[y1][:, x0] * (1 - wx) + img[y1][:, x1] * wx
-    return top * (1 - wy) + bot * wy
+    key = (rows, cols, factor)
+    if key not in _weight_cache:                # built once, reused per frame
+        _weight_cache[key] = (_cubic_weights(rows, factor), _cubic_weights(cols, factor))
+    wy, wx = _weight_cache[key]
+    return wy @ img @ wx.T
 
 
 class Card(QtWidgets.QFrame):
@@ -232,7 +256,7 @@ class Viewer(QtWidgets.QMainWindow):
         v.addLayout(form)
 
         self.avg_chk = QtWidgets.QCheckBox("時間平均（降低雜訊，僅顯示）")
-        self.smooth_chk = QtWidgets.QCheckBox("平滑顯示（雙線性放大）")
+        self.smooth_chk = QtWidgets.QCheckBox("平滑顯示（雙三次插值）")
         self.flip_h_chk = QtWidgets.QCheckBox("左右翻轉")
         self.flip_v_chk = QtWidgets.QCheckBox("上下翻轉")
         for c in (self.avg_chk, self.smooth_chk, self.flip_h_chk, self.flip_v_chk):

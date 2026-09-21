@@ -1,8 +1,14 @@
-# MLX90640 熱影像串流
+# MLX90640 Thermal Streaming on RP2350 over USB and Ethernet
 
 這個專案用 WIZnet 的 W6300-EVB-Pico2 開發板讀取 MLX90640 熱影像感測器，把感測器吐出來的原始資料即時送到電腦，再由電腦換算成溫度並且畫成熱影像。資料可以走 USB，也可以走乙太網路，兩者使用的封包格式完全相同，所以切換的時候電腦端程式不需要做任何修改，只要多帶一個參數就好。
 
 之所以把換算的工作放在電腦端，是因為 MLX90640 的溫度公式牽涉大量的浮點運算，交給 MCU 去做會吃掉太多時間，連帶影響讀取感測器的節奏。開發板只負責把資料原封不動地送出去，這樣韌體單純很多，電腦端也保留了完整的原始資料，日後想重新分析或換一套演算法都還來得及。
+
+### 實際畫面
+
+![熱影像顯示程式](docs/viewer_demo.png)
+
+這是乙太網路模式下把手掌放在感測器前面的畫面。右側是最高溫、最低溫與中心點的溫度，以及串流速率和錯誤計數，下方是溫度隨時間的變化。
 
 ### 韌體執行架構
 
@@ -23,6 +29,7 @@
 - [用乙太網路模式看熱影像](#用乙太網路模式看熱影像)
 - [韌體與工具一覽](#韌體與工具一覽)
 - [專案結構](#專案結構)
+- [免責聲明](#免責聲明)
 
 ## 你需要準備的東西
 
@@ -98,6 +105,8 @@ powershell -File scripts/build.ps1
 
 要選哪一個韌體是燒錄時才決定的事，不是編譯時。
 
+更新率預設是每秒 32 個 subpage，也就是每秒約 16 張完整畫面。要改的話，把 `firmware/src/main.c` 裡的 `SENSOR_RATE_32HZ` 換成 `SENSOR_RATE_16HZ` 這類的值再重新編譯，USB 版和乙太網路版會一起換。速率越低雜訊越小，可選 0.5 到 32 Hz，64 Hz 因為讀取時間不夠而無法使用。改了速率之後跑 `stream_stats.py` 要加上 `--rate 16` 這類參數，否則速率那一項檢查會判定失敗。
+
 ## 燒錄韌體
 
 ### 用 USB 燒錄
@@ -165,7 +174,7 @@ LED 在這個模式多了一種狀態，每秒約三次代表板上的網路晶�
 | `mlx_thermal` | 主韌體，走 USB 串流，單核心 |
 | `mlx_thermal_udp` | 主韌體，走乙太網路串流，網路跑在核心 1 |
 
-`build/firmware/` 底下另外還有幾支測試韌體，那些是開發階段用來驗證硬體的，用法寫在 [docs/debugging.md](docs/debugging.md)。
+`build/images/tests/` 底下另外還有幾支測試韌體，那些是開發階段用來驗證硬體的，用法寫在 [docs/debugging.md](docs/debugging.md)。
 
 ### 電腦端工具
 
@@ -203,3 +212,11 @@ captures/ logs/    量測資料與 log，不進 git
 - [docs/dhcp_discovery.md](docs/dhcp_discovery.md) DHCP 與自動搜尋開發板的做法
 - [docs/debugging.md](docs/debugging.md) 讀 log、追查當機、測試韌體與硬體驗證
 - [CLAUDE.md](CLAUDE.md) 專案規格、里程碑與已知問題
+
+## 免責聲明
+
+此專案大部分由 Anthropic 的 Claude 完成。我負責所有的硬體準備工作、Claude 無法完成的部分以及需要人為介入決策的部分。Claude 使用桌面版 Claude Code 在我的電腦上執行工作，撰寫韌體與電腦端的軟體，並且透過 CLI 直接操作 JLink 燒錄韌體與讀取 RTT log，同時也透過 Logic 2 的 MCP 介面控制 Logic 8 邏輯分析儀擷取 I2C 波形，再自己寫軟體分析量測結果。
+
+![開發時使用的硬體](docs/bench_setup.jpg)
+
+照片由左到右是 SEGGER J-Link EDU 與 SWD 轉接板、Adafruit MLX90640 模組、連接紫色網路線的 W6300-EVB-Pico2，以及 Saleae Logic 8。
