@@ -130,7 +130,8 @@
 ```
 CMakeLists.txt  頂層建置檔（設定 Pico SDK 後 add_subdirectory(firmware)）
                 放在根目錄是為了讓 VS Code 的 Pico 擴充功能認得整個專案；
-                建置輸出在 build/firmware/
+                燒錄檔在 build/images/（主韌體）與 build/images/tests/（測試），
+                每支只輸出 .elf 與 .uf2，CMake 中間檔留在 build/firmware/
 firmware/     韌體（CMake 子目錄，不單獨 configure）
 host/         電腦端 Python：接收、統計、溫度換算、顯示
 scripts/      燒錄、RTT、建置等 PowerShell 腳本

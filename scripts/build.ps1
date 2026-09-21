@@ -2,6 +2,7 @@
 param([switch]$Clean)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'env.ps1')
+Assert-BuildTools
 
 if ($Clean -and (Test-Path $BuildDir)) {
 	Remove-Item -Recurse -Force $BuildDir

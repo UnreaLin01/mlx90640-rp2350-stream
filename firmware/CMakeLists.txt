@@ -87,15 +87,51 @@ target_compile_options(sensor PRIVATE -Wall -Wextra)
 target_include_directories(sensor PUBLIC ${MLX_DIR}/headers)
 target_link_libraries(sensor PUBLIC project_common hardware_i2c hardware_dma m)
 
-# Add one firmware image. Every image uses the same rules:
+# Where the flashable files go. The main firmwares and the test images are
+# kept apart, the same way their sources are (src/ and tests/), so the
+# folder a user opens holds only what they would actually flash.
+set(IMAGE_DIR      ${CMAKE_BINARY_DIR}/images)
+set(TEST_IMAGE_DIR ${CMAKE_BINARY_DIR}/images/tests)
+
+# Add one firmware image into `dir`. Every image uses the same rules:
 # logs go to RTT only, and USB/UART stdio stays off.
-function(add_firmware name)
+#
+# Only two files come out per image: .elf (J-Link flashing, and addr2line
+# for finding a crash) and .uf2 (USB flashing). pico_add_extra_outputs is
+# not used, because it also writes .bin, .hex, .dis and .map for every
+# image; nothing here reads those, all four can be made from the .elf when
+# needed, and they buried the two that matter. What it does besides that
+# is kept below, so the images themselves come out exactly the same.
+function(add_image name dir)
 	add_executable(${name} ${ARGN})
 	target_compile_options(${name} PRIVATE -Wall -Wextra)
 	target_link_libraries(${name} PRIVATE project_common)
 	pico_enable_stdio_usb(${name} 0)
 	pico_enable_stdio_uart(${name} 0)
-	pico_add_extra_outputs(${name})
+
+	# The .elf follows RUNTIME_OUTPUT_DIRECTORY, but the SDK writes the
+	# .uf2 to ARCHIVE_OUTPUT_DIRECTORY. Set both, or the pair ends up in
+	# two different folders and the flash scripts cannot find the .uf2.
+	set_target_properties(${name} PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY ${dir}
+		ARCHIVE_OUTPUT_DIRECTORY ${dir})
+
+	# From pico_add_extra_outputs: the program name `picotool info` shows,
+	# and picotool's post-processing (it only acts when signing or
+	# encryption is configured, which it is not here).
+	target_compile_definitions(${name} PRIVATE PICO_TARGET_NAME="${name}")
+	picotool_postprocess_binary(${name} image_is_encrypted)
+	pico_add_uf2_output(${name})
+endfunction()
+
+# A firmware a user flashes.
+function(add_firmware name)
+	add_image(${name} ${IMAGE_DIR} ${ARGN})
+endfunction()
+
+# A development-only image: hardware checks and timing comparisons.
+function(add_test_firmware name)
+	add_image(${name} ${TEST_IMAGE_DIR} ${ARGN})
 endfunction()
 
 # ---------------------------------------------------------------------------
@@ -136,6 +172,9 @@ target_link_libraries(stream_udp PUBLIC
 	project_common sensor wiznet pico_unique_id pico_multicore)
 target_compile_definitions(stream_udp PUBLIC PICO_CORE1_STACK_SIZE=4096)
 
+# ---------------------------------------------------------------------------
+# Main firmwares (go to build/images/)
+# ---------------------------------------------------------------------------
 add_firmware(mlx_thermal src/main.c)		# main firmware, USB (32 Hz)
 target_link_libraries(mlx_thermal PRIVATE sensor stream_usb)
 
@@ -143,33 +182,36 @@ target_link_libraries(mlx_thermal PRIVATE sensor stream_usb)
 add_firmware(mlx_thermal_udp src/main.c)
 target_link_libraries(mlx_thermal_udp PRIVATE sensor stream_udp)
 
+# ---------------------------------------------------------------------------
+# Test images (development only, go to build/images/tests/)
+# ---------------------------------------------------------------------------
 # Same firmware at other subpage rates, for timing comparison (M3)
 foreach(rate 16 64)
-	add_firmware(mlx_thermal_${rate}hz src/main.c)
+	add_test_firmware(mlx_thermal_${rate}hz src/main.c)
 	target_compile_definitions(mlx_thermal_${rate}hz PRIVATE SENSOR_RATE=SENSOR_RATE_${rate}HZ)
 	target_link_libraries(mlx_thermal_${rate}hz PRIVATE sensor stream_usb)
 endforeach()
-add_firmware(pin_test tests/pin_test.c)		# Logic 8 wiring check
+add_test_firmware(pin_test tests/pin_test.c)	# Logic 8 wiring check
 
 # EEPROM read test at two clock rates (M2)
 foreach(hz 400000 1000000)
 	math(EXPR khz "${hz} / 1000")
-	add_firmware(eeprom_test_${khz}k tests/eeprom_test.c)
+	add_test_firmware(eeprom_test_${khz}k tests/eeprom_test.c)
 	target_compile_definitions(eeprom_test_${khz}k PRIVATE I2C_TEST_HZ=${hz})
 	target_link_libraries(eeprom_test_${khz}k PRIVATE sensor)
 endforeach()
 
 # Long-run test at 1 MHz: read back to back, print a status line every 500 reads
-add_firmware(eeprom_soak_1000k tests/eeprom_test.c)
+add_test_firmware(eeprom_soak_1000k tests/eeprom_test.c)
 target_compile_definitions(eeprom_soak_1000k PRIVATE
 	I2C_TEST_HZ=1000000 READ_INTERVAL_MS=0 REPORT_EVERY=500)
 target_link_libraries(eeprom_soak_1000k PRIVATE sensor)
 
 # Ethernet bring-up test (M6)
-add_firmware(net_test tests/net_test.c src/net.c)
+add_test_firmware(net_test tests/net_test.c src/net.c)
 target_link_libraries(net_test PRIVATE wiznet pico_unique_id)
 
 # I2C line rise time test (M2)
-add_firmware(rise_test tests/rise_test.c)
+add_test_firmware(rise_test tests/rise_test.c)
 pico_generate_pio_header(rise_test ${CMAKE_CURRENT_LIST_DIR}/tests/rise_test.pio)
 target_link_libraries(rise_test PRIVATE hardware_pio)

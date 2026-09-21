@@ -6,10 +6,13 @@
     // line do exactly the same thing, with the tool versions pinned in
     // scripts/env.ps1.
     //
-    // "Run Project" flashes over USB with picotool and needs no J-Link and
-    // no BOOTSEL button (the USB firmware has the reset interface). The
-    // J-Link tasks are for debugging, and for firmware without USB
-    // (mlx_thermal_udp), which USB flashing cannot restart by itself.
+    // "Run Project" flashes over USB with picotool, without a J-Link. When
+    // that cannot work because the board has to be put into BOOTSEL first,
+    // flash_usb.ps1 says so and says what to do, so the menu does not have
+    // to explain it here.
+    //
+    // The J-Link tasks work whatever is on the board, and they are the way
+    // to recover one that USB can no longer reach.
     "version": "2.0.0",
     "tasks": [
         {
@@ -60,26 +63,17 @@
                 "-NoProfile",
                 "-ExecutionPolicy", "Bypass",
                 "-File", "${workspaceFolder}/scripts/flash.ps1",
-                "-Elf", "${workspaceFolder}/build/firmware/${input:firmware}.elf"
+                "-Elf", "${workspaceFolder}/build/images/${input:firmware}.elf"
             ],
             "dependsOn": "Compile Project",
             "problemMatcher": [],
             "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
-        },
-        {
-            "label": "RTT log",
-            "type": "process",
-            "command": "powershell.exe",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-File", "${workspaceFolder}/scripts/rtt.ps1",
-                "-Elf", "${workspaceFolder}/build/firmware/${input:firmware}.elf"
-            ],
-            "problemMatcher": [],
-            "presentation": { "reveal": "always", "panel": "dedicated" }
         }
     ],
+    // Only the two firmwares that stream thermal images are offered. The
+    // test images are development tools: putting them in a menu everyone
+    // sees is noise, so they are flashed from the command line instead
+    // (docs/debugging.md has the commands).
     "inputs": [
         {
             "id": "firmware",
@@ -87,16 +81,10 @@
             "description": "Which firmware image?",
             "default": "mlx_thermal",
             "options": [
-                "mlx_thermal",
-                "mlx_thermal_udp",
-                "mlx_thermal_16hz",
-                "mlx_thermal_64hz",
-                "net_test",
-                "pin_test",
-                "rise_test",
-                "eeprom_test_400k",
-                "eeprom_test_1000k",
-                "eeprom_soak_1000k"
+                // VS Code shows each option as "label: value", so the label
+                // holds only the explanation, never the name again.
+                { "value": "mlx_thermal", "label": "stream over USB" },
+                { "value": "mlx_thermal_udp", "label": "stream over Ethernet" }
             ]
         }
     ]

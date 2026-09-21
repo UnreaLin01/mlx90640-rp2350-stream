@@ -92,29 +92,35 @@ host/.venv/Scripts/python -m pip install -r host/requirements.txt
 powershell -File scripts/build.ps1
 ```
 
-加上 `-Clean` 參數會先把整個 build 目錄刪掉再重建，遇到編譯結果怪怪的時候可以試試看。編譯結果放在 `build/firmware/`，每個韌體都會產生兩種檔案，`.elf` 是給 J-Link 用的，`.uf2` 是給 USB 燒錄用的。
+不管用哪一種，按一次就會把所有韌體一起編出來，包含 USB 版和乙太網路版，你不需要為了換模式而重編。從空的 build 目錄開始大約需要一分鐘，之後只會重編改動到的部分，通常幾秒就好。
+
+加上 `-Clean` 參數會先把整個 build 目錄刪掉再重建，遇到編譯結果怪怪的時候可以試試看。要燒錄的檔案都在 `build/images/`，裡面只有兩支主韌體，每支各有兩個檔案，`.elf` 是給 J-Link 用的，`.uf2` 是給 USB 燒錄用的。開發用的測試韌體另外放在 `build/images/tests/`，平常用不到。
+
+要選哪一個韌體是燒錄時才決定的事，不是編譯時。
 
 ## 燒錄韌體
 
 ### 用 USB 燒錄
 
-這是平常最方便的方式，不需要 J-Link，也不用手動按 BOOTSEL 按鈕。在 VS Code 裡按右下角的 **Run** 就會先編譯再燒錄。命令列的做法如下，不帶參數就是燒主韌體，帶參數則可以指定其他韌體。
+這是平常最方便的方式，不需要 J-Link，也不用手動按 BOOTSEL 按鈕。在 VS Code 裡按右下角的 **Run** 就會先編譯再燒錄，它固定燒 USB 版的 `mlx_thermal`。要燒乙太網路版就按 `Ctrl+Shift+P` 選 Tasks: Run Task，再選 Flash over USB，從兩個選項裡挑 `mlx_thermal_udp`。
+
+命令列的做法如下，不帶參數就是燒 USB 版，帶參數則可以指定乙太網路版。
 
 ```bash
 powershell -File scripts/flash_usb.ps1
-powershell -File scripts/flash_usb.ps1 -Firmware pin_test
+powershell -File scripts/flash_usb.ps1 -Firmware mlx_thermal_udp
 ```
 
 之所以連按鈕都不用按，是因為 USB 韌體裡面內建了 Raspberry Pi 的 reset 介面，picotool 可以透過它直接叫開發板自己重開進燒錄模式。
 
 > [!NOTE]
-> 有兩種情況還是得按住 BOOTSEL 再插 USB 線。一種是開發板目前跑的是 `mlx_thermal_udp`，那個版本為了省下 USB 的資源，整個 USB 功能都關掉了。另一種是開發板上還沒有燒過任何韌體。
+> 不是每次都這麼順利。開發板上現在跑的如果是沒有 USB 的韌體，例如 `mlx_thermal_udp`，或者板子還沒燒過任何東西，picotool 就叫不動它，這時要按住 BOOTSEL 再插 USB 線。你不必記住這件事，遇到的時候燒錄腳本會直接告訴你該怎麼做。
 
 ### 用 J-Link 燒錄
 
 ```bash
 powershell -File scripts/flash.ps1
-powershell -File scripts/flash.ps1 -Elf build/firmware/net_test.elf
+powershell -File scripts/flash.ps1 -Elf build/images/mlx_thermal_udp.elf
 ```
 
 VS Code 裡也有對應的工作，按 `Ctrl+Shift+P` 之後選 Tasks: Run Task，再選 Flash with J-Link 就可以了。
@@ -129,7 +135,7 @@ host/.venv/Scripts/python host/viewer.py
 
 程式會依照 VID、PID 與產品名稱自動找到開發板的 COM port，所以你不需要去裝置管理員查編號，也不必在指令裡指定。如果同時插了好幾塊板子想指定其中一塊，可以寫成 `--source usb:COM9` 這種形式。
 
-板子上 GP25 的 LED 用閃爍速度表示狀態，每秒閃一次是正常，每秒約三次代表網路晶片沒起來，每秒約五次代表感測器初始化失敗，後兩者通常都是接線或供電的問題。想看詳細一點的數字，跑串流統計工具，它會連續接收六十秒，檢查有沒有掉包或 CRC 錯誤，最後印出 PASS 或 FAIL。
+板子上 GP25 的 LED 用閃爍速度表示狀態，每秒閃一次是正常，每秒約五次代表感測器初始化失敗，通常是接線或供電的問題。想看詳細一點的數字，跑串流統計工具，它會連續接收六十秒，檢查有沒有掉包或 CRC 錯誤，最後印出 PASS 或 FAIL。
 
 ```bash
 host/.venv/Scripts/python host/stream_stats.py --duration 60
@@ -137,11 +143,13 @@ host/.venv/Scripts/python host/stream_stats.py --duration 60
 
 ## 用乙太網路模式看熱影像
 
-先燒錄 `mlx_thermal_udp`。這個版本沒有 USB 功能，所以只能用 BOOTSEL 或 J-Link 燒。接著把網路線接到路由器，USB 線仍然要接著，它在這個模式下只負責供電。
+先燒錄 `mlx_thermal_udp`，照上面燒錄那節的做法選它就好。這個版本為了省資源把 USB 功能關掉了，所以燒完之後電腦上的 COM port 會消失，這是正常的。接著把網路線接到路由器，USB 線仍然要接著，它在這個模式下只負責供電。
 
 ```bash
 host/.venv/Scripts/python host/viewer.py --source udp
 ```
+
+LED 在這個模式多了一種狀態，每秒約三次代表板上的網路晶片沒有回應，這時韌體還在讀感測器，只是資料送不出去。要注意網路線沒插的時候燈號不會變，仍然是每秒一次，但電腦端會一直找不到開發板，所以畫面沒出來時先檢查網路線。
 
 顯示程式和 USB 模式用的是同一支，差別只在資料從哪裡來。它尋找開發板的方式是這樣的，先試上一次記住的位址，那個位址存在 `host/.board_address` 這個檔案裡，如果沒有得到回應才改用廣播搜尋，找到之後就固定用單播通訊，並且把新的位址記起來給下次用。你如果想跳過搜尋直接指定位址，用 `--source udp:192.168.1.50` 這種寫法就可以。
 
@@ -184,7 +192,7 @@ host/              電腦端 Python
 scripts/           建置、燒錄、RTT 的 PowerShell 腳本
 docs/              協定規格、各階段的量測紀錄、架構圖
 third_party/       SEGGER RTT、Melexis 函式庫、WIZnet 驅動，都保持原樣未修改
-build/             建置輸出，不進 git
+build/             建置輸出，不進 git，要燒錄的檔案在 build/images/
 captures/ logs/    量測資料與 log，不進 git
 ```
 

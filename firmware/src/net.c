@@ -13,6 +13,18 @@
 #include "socket.h"
 #include "w6300.h"
 #include "wizchip_conf.h"
+
+/*
+ * WIZnet's header declares several static functions it never defines,
+ * which -Wall reports six times. The header is third-party and stays
+ * unmodified, so the warning is turned off here instead.
+ *
+ * It has to stay off for the rest of this file. GCC checks for "declared
+ * static but never defined" only when the whole file is done, so wrapping
+ * just the include in push/pop does not catch it (tried and measured).
+ * Only this one warning is affected; every other check still runs.
+ */
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include "wizchip_spi.h"
 
 #include "log.h"

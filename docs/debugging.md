@@ -8,11 +8,11 @@
 
 ```bash
 powershell -File scripts/rtt.ps1
-powershell -File scripts/rtt.ps1 -Elf build/firmware/net_test.elf
+powershell -File scripts/rtt.ps1 -Elf build/images/tests/net_test.elf
 powershell -File scripts/rtt.ps1 -Stop
 ```
 
-log 會同時顯示在終端機並寫進 `logs/` 資料夾。VS Code 的工作清單裡也有 RTT log 這一項可以直接叫起來。
+log 會寫進 `logs/` 資料夾。這項只在命令列提供，不放進 VS Code 的工作清單，因為一般使用不會用到。`-Elf` 要指定板子上實際在跑的那支韌體，否則讀到的位址不對，會收不到任何東西。
 
 接 J-Link 的時候，除了 SWDIO 與 SWCLK 之外記得把 VTref 接到開發板的 3V3。J-Link 靠這支腳判斷目標板的工作電壓，沒接的話它會認為板子沒通電而拒絕連線。
 
@@ -30,7 +30,7 @@ log 會同時顯示在終端機並寫進 `logs/` 資料夾。VS Code 的工作�
 連上之後輸入 `halt` 停住 CPU，`regs` 讀出暫存器，`mem32 <SP> 0x40` 把堆疊內容倒出來。拿到 PC 或 LR 的位址之後，再用下面的指令把位址對應回原始碼的行號。
 
 ```bash
-~/.pico-sdk/toolchain/15_2_Rel1/bin/arm-none-eabi-addr2line.exe -f -e build/firmware/mlx_thermal_udp.elf 0x10000E94
+~/.pico-sdk/toolchain/15_2_Rel1/bin/arm-none-eabi-addr2line.exe -f -e build/images/mlx_thermal_udp.elf 0x10000E94
 ```
 
 > [!WARNING]
@@ -78,6 +78,16 @@ host/.venv/Scripts/python host/net_test.py
 | `eeprom_test_400k`、`eeprom_test_1000k` | 以指定的速率讀取 EEPROM 並驗證內容 |
 | `eeprom_soak_1000k` | 1 MHz 下的長時間連續讀取測試 |
 | `net_test` | 乙太網路測試，包含 ping 與 UDP 吞吐量 |
+
+測試韌體編出來放在 `build/images/tests/`，跟 `build/images/` 裡的兩支主韌體分開。VS Code 的選單只列出主韌體，測試韌體一律從命令列指定，三種方式都可以。
+
+```bash
+powershell -File scripts/flash_usb.ps1 -Firmware pin_test
+powershell -File scripts/flash.ps1 -Elf build/images/tests/pin_test.elf
+powershell -File scripts/rtt.ps1 -Elf build/images/tests/pin_test.elf
+```
+
+第一行走 USB，第二行走 J-Link，第三行是開這支韌體的 RTT log。把 `pin_test` 換成你要的名稱就好，完整清單在上面的表格。USB 那一行只要給名稱，腳本會自己去兩個資料夾找。
 
 如果你日後動到 I2C 的接線或換了上拉電阻，重新跑 `rise_test` 與 `eeprom_soak_1000k` 可以確認線路品質還撐得住 1 MHz。重新接邏輯分析儀的探棒之後，先跑一次 `pin_test` 確認通道沒有接反，可以省掉後面一堆誤判。
 
